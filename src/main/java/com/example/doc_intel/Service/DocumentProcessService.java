@@ -39,7 +39,7 @@ public class DocumentProcessService {
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
         this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
-        this.model = chatModelFactory.giveMeChatModel("local").giveMeModel();
+        this.model = chatModelFactory.giveMeChatModel("openAIChatModel").giveMeModel();
         this.documentEncoderFactory = documentEncoderFactory;
     }
 

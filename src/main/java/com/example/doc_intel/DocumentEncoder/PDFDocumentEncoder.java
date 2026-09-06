@@ -19,11 +19,12 @@ import java.util.List;
 public class PDFDocumentEncoder implements DocumentEncoder {
 
     @Override
-    public List<TextSegment> encode(final MultipartFile file)  {
+    public List<TextSegment> encode(final MultipartFile file) {
         try {
             List<TextSegment> segments = new ArrayList<>();
+            String fileName = file.getOriginalFilename();
+            System.out.println(fileName);
             try (PDDocument pdf = Loader.loadPDF(file.getBytes())) {
-                String fileName = file.getOriginalFilename();
 
                 for (int page = 0; page < pdf.getNumberOfPages(); page++) {
                     PDFTextStripper stripper = new PDFTextStripper();
@@ -38,7 +39,7 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                             continue;
                         }
                         Metadata metadata = new Metadata();
-                        metadata.put(Constants.PAGE_NUMBER, fileName);
+                        metadata.put(Constants.FILE_NAME, fileName);
                         metadata.put(Constants.PAGE_NUMBER, page + 1);
                         metadata.put(Constants.LINE_NUMBER, line + 1);
                         metadata.put(Constants.TEXT, text);
