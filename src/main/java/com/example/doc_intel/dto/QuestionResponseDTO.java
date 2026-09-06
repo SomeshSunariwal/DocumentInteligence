@@ -1,22 +1,22 @@
 package com.example.doc_intel.dto;
 
+import java.util.List;
 
 public class QuestionResponseDTO {
-    Double score;
+    List<TextSegmentResponseDTO> textSegmentResponseDTOList;
     String result;
 
-    public QuestionResponseDTO(String result, Double score) {
+    public QuestionResponseDTO(String result, List<TextSegmentResponseDTO> textSegmentResponseDTOList) {
         this.result = result;
-        this.score = score;
+        this.textSegmentResponseDTOList = textSegmentResponseDTOList;
     }
 
-
-    public Double getScore() {
-        return score;
+    public List<TextSegmentResponseDTO> getTextSegmentResponseDTOList() {
+        return textSegmentResponseDTOList;
     }
 
-    public void setScore(Double score) {
-        this.score = score;
+    public void setTextSegmentResponseDTOList(List<TextSegmentResponseDTO> textSegmentResponseDTOList) {
+        this.textSegmentResponseDTOList = textSegmentResponseDTOList;
     }
 
     public String getResult() {

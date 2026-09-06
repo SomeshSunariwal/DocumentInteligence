@@ -1,8 +1,10 @@
 package com.example.doc_intel.DocumentEncoder;
 
-import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.segment.TextSegment;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 public interface DocumentEncoder {
-    Document encode(MultipartFile file) ;
+    List<TextSegment> encode(MultipartFile file) ;
 }

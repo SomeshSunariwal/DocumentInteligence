@@ -1,5 +1,6 @@
 package com.example.doc_intel.Service;
 
+import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
 import com.example.doc_intel.Exceptions.*;
@@ -8,6 +9,7 @@ import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.dto.*;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -31,8 +33,8 @@ public class DocumentProcessService {
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ChatModel model;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
-    List<String> supportedTypes = Arrays.asList("pdf", "txt");
     private final DocumentEncoderFactory documentEncoderFactory;
+    List<String> supportedTypes = Arrays.asList("pdf", "txt");
     private DocumentEncoder documentEncoder;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
@@ -47,9 +49,7 @@ public class DocumentProcessService {
         documentEncoder = documentEncoderFactory.getParser(extension);
 
         try {
-            Document document = documentEncoder.encode(file);
-            DocumentSplitter splitter = DocumentSplitters.recursive(100, 30);
-            chunks = splitter.split(document);
+            chunks = documentEncoder.encode(file);
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
         }
@@ -64,7 +64,7 @@ public class DocumentProcessService {
     }
 
     private @NonNull String getExtension(MultipartFile file) {
-        if (file == null ) {
+        if (file == null) {
             throw new FileSupportError("Unsupported File Format");
         }
 
@@ -108,14 +108,16 @@ public class DocumentProcessService {
     }
 
     public QuestionResponseDTO processQuestion(QuestionRequestDTO questionDTO) {
-
+        List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
         String message = questionDTO.getQuestion();
+
         if (Objects.isNull(message)) {
             throw new NullMessageException("Message cannot be null");
         }
         if (message.isEmpty()) {
             throw new MessageLengthException("Please Provide a Question");
         }
+
         // 2. Convert question into embedding
         Embedding queryEmbedding = embeddingModel.embed(questionDTO.getQuestion()).content();
 
@@ -126,7 +128,6 @@ public class DocumentProcessService {
                 .minScore(0.5)
                 .build();
 
-
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
 
         // 4. Get relevant chunks
@@ -135,7 +136,22 @@ public class DocumentProcessService {
 
         // 5. Build context
         String context = matches.stream()
-                .map(match -> match.embedded().text())
+                .map(match -> {
+                    TextSegment segment = match.embedded();
+                    Metadata metadata = segment.metadata();
+                    String fileName = metadata.getString(Constants.FILE_NAME);
+                    Integer pageNumber = metadata.getInteger(Constants.PAGE_NUMBER);
+                    Integer lineNumber = metadata.getInteger(Constants.LINE_NUMBER);
+                    String text = metadata.getString(Constants.TEXT);
+                    double score = match.score() * 100;
+                    textSegmentResponseDTO.add(
+                            new TextSegmentResponseDTO(fileName,
+                                    pageNumber,
+                                    lineNumber,
+                                    text,
+                                    String.format("%.2f%%", score)));
+                    return match.embedded().text();
+                })
                 .collect(Collectors.joining("\n\n"));
 
         // 6. Create RAG prompt
@@ -158,10 +174,8 @@ public class DocumentProcessService {
                 """.formatted(context, questionDTO.getQuestion());
 
         try {
-//            EmbeddingMatch<TextSegment> embeddingMatch = matches.getFirst();
-            // 7. Send context + question to Local LLM
             String answer = model.chat(prompt);
-            return new QuestionResponseDTO(answer, 100.0);
+            return new QuestionResponseDTO(answer, textSegmentResponseDTO);
         } catch (NoSuchElementException e) {
             throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
         } catch (Exception e) {
