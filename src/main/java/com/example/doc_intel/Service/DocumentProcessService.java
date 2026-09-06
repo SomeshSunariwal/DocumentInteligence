@@ -31,7 +31,7 @@ public class DocumentProcessService {
     private final ChatModel model;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
     List<String> supportedTypes = Arrays.asList("pdf", "txt");
-    private ReaderFactory readerFactory;
+    private final ReaderFactory readerFactory;
     private Reader reader;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, ReaderFactory readerFactory) {
