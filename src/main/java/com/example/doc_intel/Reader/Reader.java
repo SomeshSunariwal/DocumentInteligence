@@ -4,5 +4,5 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface Reader {
 
-    String getParseFileData(MultipartFile file) throws Exception;
+    String getParseFileData(MultipartFile file) ;
 }

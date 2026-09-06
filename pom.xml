@@ -40,17 +40,19 @@
             <artifactId>langchain4j-opensearch</artifactId>
             <version>1.20.0-beta30</version>
         </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
             <version>1.20.0</version>
         </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-opensearch</artifactId>
             <version>1.20.0-beta30</version>
         </dependency>
-        <!--  Apache Tika  -->
+
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-core</artifactId>
@@ -59,15 +61,10 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-            <version>1.20.0-beta30</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>1.19.0</version>
         </dependency>
+
         <!--  Local Embedding Model  -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

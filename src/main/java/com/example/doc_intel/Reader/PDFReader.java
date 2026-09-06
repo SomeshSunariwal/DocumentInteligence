@@ -1,5 +1,7 @@
 package com.example.doc_intel.Reader;
 
+import com.example.doc_intel.Exceptions.FileReadError;
+import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
 import org.springframework.stereotype.Component;
@@ -12,7 +14,7 @@ public class PDFReader implements Reader {
     private final Tika tika = new Tika();
 
     @Override
-    public String getParseFileData(final MultipartFile file) throws Exception {
+    public String getParseFileData(final MultipartFile file)  {
         try {
             // 1. Read PDF
             byte[] pdfBytes = file.getBytes();
@@ -24,9 +26,9 @@ public class PDFReader implements Reader {
 
             return text;
         } catch (IOException | TikaException exception) {
-            throw new Exception("IO Exception" + exception.getMessage());
+            throw new FileReadError("Error While Reading PDF File");
         } catch (Exception e) {
-            throw new Exception("Exception" + e.getMessage());
+            throw new InternalServerErrorException("Internal Server Error");
         }
     }
 }

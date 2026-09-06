@@ -35,10 +35,25 @@ public class GlobalException {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ExceptionDTO(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
     }
+
     @ExceptionHandler(NoResultFoundException.class)
     ResponseEntity<ExceptionDTO> handleNoResultFoundException(NoResultFoundException e) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ExceptionDTO(e.getMessage(), HttpStatus.NOT_FOUND.value()));
+    }
+
+    @ExceptionHandler(FileSupportError.class)
+    ResponseEntity<ExceptionDTO> handleFileSupportError(FileSupportError e) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ExceptionDTO(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    }
+
+    @ExceptionHandler(FileReadError.class)
+    ResponseEntity<ExceptionDTO> handleFileReadError(FileReadError e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
 }

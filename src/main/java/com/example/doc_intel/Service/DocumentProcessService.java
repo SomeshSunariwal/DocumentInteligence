@@ -1,12 +1,9 @@
 package com.example.doc_intel.Service;
 
-import com.example.doc_intel.Exceptions.MessageLengthException;
-import com.example.doc_intel.Exceptions.NoResultFoundException;
-import com.example.doc_intel.Exceptions.NullMessageException;
-import com.example.doc_intel.Exceptions.ProcessFileException;
+import com.example.doc_intel.Exceptions.*;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Reader.Reader;
-import com.example.doc_intel.Reader.ReaderContext;
+import com.example.doc_intel.Reader.ReaderFactory;
 import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.dto.*;
 import dev.langchain4j.data.document.Document;
@@ -21,8 +18,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.apache.logging.log4j.util.Strings;
-import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,19 +29,38 @@ public class DocumentProcessService {
 
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ChatModel model;
-    private final ReaderContext readerContext;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+    List<String> supportedTypes = Arrays.asList("pdf", "txt");
+    private ReaderFactory readerFactory;
+    private Reader reader;
 
-    DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, ReaderContext readerContext) {
+    DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, ReaderFactory readerFactory) {
         this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
         this.model = chatModelFactory.giveMeChatModel("local").giveMeModel();
-        this.readerContext = readerContext;
+        this.readerFactory = readerFactory;
+
     }
 
     public DocumentProcessResponseDTO processDocument(MultipartFile file) {
         List<TextSegment> chunks;
+        String filename = file.getOriginalFilename();
+
+        if (filename == null || !filename.contains(".")) {
+            throw new FileSupportError("Unsupported File Format");
+        }
+
+        String extension = filename
+                .substring(filename.lastIndexOf('.') + 1)
+                .toLowerCase();
+
+        if (!supportedTypes.contains(extension)) {
+            throw new FileSupportError("Unsupported File Format");
+        }
+
+        reader = readerFactory.getDataFromReader(extension);
+
         try {
-            final String text = readerContext.getDataFromReader(file);
+            final String text = reader.getParseFileData(file);
             Document document = Document.from(text);
             DocumentSplitter splitter = DocumentSplitters.recursive(500, 50);
             chunks = splitter.split(document);
