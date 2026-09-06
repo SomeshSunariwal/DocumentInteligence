@@ -1,0 +1,6 @@
+"Hey My name is somesh",
+"I like to play video Games",
+"Recently I played a PC Game that is in a horror Category",
+"I am very good in coding but lack knowledge about coding",
+"I have build application for window pc Games",
+"in Racing games, I'm Pro"

@@ -1,9 +1,9 @@
 package com.example.doc_intel.Service;
 
+import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
+import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
 import com.example.doc_intel.Exceptions.*;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
-import com.example.doc_intel.Reader.Reader;
-import com.example.doc_intel.Reader.ReaderFactory;
 import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.dto.*;
 import dev.langchain4j.data.document.Document;
@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,42 +32,28 @@ public class DocumentProcessService {
     private final ChatModel model;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
     List<String> supportedTypes = Arrays.asList("pdf", "txt");
-    private final ReaderFactory readerFactory;
-    private Reader reader;
+    private final DocumentEncoderFactory documentEncoderFactory;
+    private DocumentEncoder documentEncoder;
 
-    DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, ReaderFactory readerFactory) {
+    DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
         this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
         this.model = chatModelFactory.giveMeChatModel("local").giveMeModel();
-        this.readerFactory = readerFactory;
-
+        this.documentEncoderFactory = documentEncoderFactory;
     }
 
     public DocumentProcessResponseDTO processDocument(MultipartFile file) {
         List<TextSegment> chunks;
-        String filename = file.getOriginalFilename();
-
-        if (filename == null || !filename.contains(".")) {
-            throw new FileSupportError("Unsupported File Format");
-        }
-
-        String extension = filename
-                .substring(filename.lastIndexOf('.') + 1)
-                .toLowerCase();
-
-        if (!supportedTypes.contains(extension)) {
-            throw new FileSupportError("Unsupported File Format");
-        }
-
-        reader = readerFactory.getDataFromReader(extension);
+        String extension = getExtension(file);
+        documentEncoder = documentEncoderFactory.getParser(extension);
 
         try {
-            final String text = reader.getParseFileData(file);
-            Document document = Document.from(text);
-            DocumentSplitter splitter = DocumentSplitters.recursive(500, 50);
+            Document document = documentEncoder.encode(file);
+            DocumentSplitter splitter = DocumentSplitters.recursive(100, 30);
             chunks = splitter.split(document);
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
         }
+
         System.out.println("Number of chunks: " + chunks.size());
         for (TextSegment chunk : chunks) {
             Embedding embedding = embeddingModel.embed(chunk).content();
@@ -74,6 +61,25 @@ public class DocumentProcessService {
             System.out.println("Stored chunk: " + id);
         }
         return new DocumentProcessResponseDTO("Document processed successfully.", chunks.size());
+    }
+
+    private @NonNull String getExtension(MultipartFile file) {
+        if (file == null ) {
+            throw new FileSupportError("Unsupported File Format");
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.contains(".")) {
+            throw new FileSupportError("Unsupported File Format");
+        }
+
+        String extension = filename
+                .substring(filename.lastIndexOf('.') + 1)
+                .toLowerCase();
+        if (!supportedTypes.contains(extension)) {
+            throw new FileSupportError("Unsupported File Format");
+        }
+        return extension;
     }
 
     public DocumentProcessResponseDTO processFile(FileRequestDTO fileRequestDTO) {
