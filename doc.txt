@@ -1,6 +1,3 @@
-"Hey My name is somesh",
-"I like to play video Games",
-"Recently I played a PC Game that is in a horror Category",
-"I am very good in coding but lack knowledge about coding",
-"I have build application for window pc Games",
-"in Racing games, I'm Pro"
+OpenAI acknowledges wiki incident; plans framework to report unintended AI behaviour
+OpenAI has acknowledged the growing real-world risks from unintended AI behaviour, 
+including the recent “wiki incident”, and said it is developing a framework for disclosing such incidents

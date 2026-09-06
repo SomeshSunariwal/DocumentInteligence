@@ -13,6 +13,8 @@ public class OpenSearchStore implements Store{
         return OpenSearchEmbeddingStore
                 .builder()
                 .serverUrl("http://localhost:9200")
+                .userName("admin")
+                .password("DocIntel@1221")
                 .indexName("my-embeddings")
                 .build();
     }
