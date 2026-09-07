@@ -1,6 +1,7 @@
 package com.example.doc_intel.Controller;
 
 import com.example.doc_intel.Service.DocumentProcessService;
+import com.example.doc_intel.Service.PublisherService;
 import com.example.doc_intel.dto.DocumentProcessResponseDTO;
 import com.example.doc_intel.dto.FileRequestDTO;
 import com.example.doc_intel.dto.QuestionRequestDTO;
@@ -17,6 +18,9 @@ public class DocumentController {
     @Autowired
     private DocumentProcessService documentProcessService;
 
+    @Autowired
+    private PublisherService publisherService;
+
     @PostMapping("/document")
     public ResponseEntity<DocumentProcessResponseDTO> postDocument(@RequestParam("file") MultipartFile file) {
         DocumentProcessResponseDTO documentProcessResponseDTO = documentProcessService.processDocument(file);
@@ -24,7 +28,7 @@ public class DocumentController {
     }
 
     @PostMapping("/file")
-    public ResponseEntity<DocumentProcessResponseDTO> postDocument(@RequestBody FileRequestDTO fileRequestDTO) {
+    public ResponseEntity<DocumentProcessResponseDTO> postFile(@RequestBody FileRequestDTO fileRequestDTO) {
         DocumentProcessResponseDTO documentProcessResponseDTO = documentProcessService.processFile(fileRequestDTO);
         return ResponseEntity.ok().body(documentProcessResponseDTO);
     }
@@ -33,5 +37,11 @@ public class DocumentController {
     public ResponseEntity<QuestionResponseDTO> postQuestion(@RequestBody QuestionRequestDTO questionDTO) {
         QuestionResponseDTO responseDTO = documentProcessService.processQuestion(questionDTO);
         return ResponseEntity.ok().body(responseDTO);
+    }
+
+    @PostMapping("/publish")
+    public ResponseEntity<DocumentProcessResponseDTO> publishDocument(@RequestBody FileRequestDTO fileRequestDTO)  {
+        DocumentProcessResponseDTO documentProcessResponseDTO = publisherService.publishDocument(fileRequestDTO);
+        return ResponseEntity.ok().body(documentProcessResponseDTO);
     }
 }

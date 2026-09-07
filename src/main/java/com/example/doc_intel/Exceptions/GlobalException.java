@@ -56,4 +56,18 @@ public class GlobalException {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ExceptionDTO(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
+
+    @ExceptionHandler(OpenSearchVectoreException.class)
+    ResponseEntity<ExceptionDTO> handleOpenSearchVectoreException(OpenSearchVectoreException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+    }
+
+    @ExceptionHandler(OpenSearchIndexingException.class)
+    ResponseEntity<ExceptionDTO> handleOpenSearchIndexingException(OpenSearchIndexingException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+    }
 }

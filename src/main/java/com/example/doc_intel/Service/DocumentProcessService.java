@@ -21,6 +21,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 @Component
 public class DocumentProcessService {
 
+    private static final Logger log = LoggerFactory.getLogger(DocumentProcessService.class);
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ChatModel model;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
@@ -38,8 +41,8 @@ public class DocumentProcessService {
     private DocumentEncoder documentEncoder;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
-        this.embeddingStore = storeFactory.giveMeStore("openSearch").giveMeStore();
-        this.model = chatModelFactory.giveMeChatModel("openAIChatModel").giveMeModel();
+        this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
+        this.model = chatModelFactory.giveMeChatModel("localAI").giveMeModel();
         this.documentEncoderFactory = documentEncoderFactory;
     }
 
@@ -54,12 +57,12 @@ public class DocumentProcessService {
             throw new ProcessFileException("Internal Server Error");
         }
 
-        System.out.println("Number of chunks: " + chunks.size());
+        log.info("Number of chunks: {}", chunks.size());
         for (TextSegment chunk : chunks) {
             Embedding embedding = embeddingModel.embed(chunk).content();
-            String id = embeddingStore.add(embedding, chunk);
-            System.out.println("Stored chunk: " + id);
+            embeddingStore.add(embedding, chunk);
         }
+        log.info("All Chunk Stored Successfully");
         return new DocumentProcessResponseDTO("Document processed successfully.", chunks.size());
     }
 
@@ -94,12 +97,12 @@ public class DocumentProcessService {
             Document document = Document.from(text);
             DocumentSplitter splitter = DocumentSplitters.recursive(100, 50);
             List<TextSegment> chunks = splitter.split(document);
-            System.out.println("Number of chunks: " + chunks.size());
+            log.info("Number of chunks: {}", chunks.size());
 
             for (TextSegment chunk : chunks) {
                 Embedding embedding = embeddingModel.embed(chunk).content();
                 String id = embeddingStore.add(embedding, chunk);
-                System.out.println("Stored chunk: " + id);
+                log.info("Stored chunk: {}", id);
             }
             return new DocumentProcessResponseDTO("Document processed successfully.", chunks.size());
         } catch (Exception e) {
@@ -119,7 +122,7 @@ public class DocumentProcessService {
         }
 
         // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(questionDTO.getQuestion()).content();
+        Embedding queryEmbedding = embeddingModel.embed(message).content();
 
         // 3. Search OpenSearch
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -132,7 +135,7 @@ public class DocumentProcessService {
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
-        System.out.println("Retrieved chunks: " + matches.size());
+        log.info("Retrieved chunks: {}", matches.size());
 
         // 5. Build context
         String context = matches.stream()
@@ -175,6 +178,7 @@ public class DocumentProcessService {
 
         try {
             String answer = model.chat(prompt);
+            log.info("Response Generated");
             return new QuestionResponseDTO(answer, textSegmentResponseDTO);
         } catch (NoSuchElementException e) {
             throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");

@@ -11,6 +11,8 @@ import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import org.apache.tika.Tika;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,8 +25,11 @@ import java.util.List;
 @Component
 public class TextFileDocumentEncoder implements DocumentEncoder {
 
+    private static final Logger log = LoggerFactory.getLogger(TextFileDocumentEncoder.class);
+
     @Override
     public List<TextSegment> encode(MultipartFile file) {
+        log.info("Using Text File Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(

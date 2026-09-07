@@ -5,4 +5,6 @@ public class Constants {
     public static final String LINE_NUMBER = "lineNumber";
     public static final String PAGE_NUMBER = "pageNumber";
     public static final String TEXT = "text";
+    public static final String INDEX_NAME = "pdf-documents";
+
 }
