@@ -1,13 +1,12 @@
 package com.example.doc_intel.dto;
 
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
 public class QuestionRequestDTO {
     String question;
 
-    public String getQuestion() {
-        return question;
-    }
-
-    public void setQuestion(String question) {
-        this.question = question;
-    }
 }

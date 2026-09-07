@@ -9,10 +9,10 @@
     set OPENSEARCH_INITIAL_ADMIN_PASSWORD=<strong-password>{DocIntel@1221}
     echo %OPENSEARCH_INITIAL_ADMIN_PASSWORD%
     ```
-
-3. Run in main page : `docker compose up -d`
-4. Run in main page : `docker compose down`
-5. Run Open Search at: `http://localhost:5601`
+3. check docker compose for the resources.
+4. Run in main page : `docker compose up -d`
+5. Run in main page : `docker compose down`
+6. Run Open Search at: `http://localhost:5601`
 
 ### Test Commands:
 1. curl -X POST http://localhost:8080/api/document -F "file=@doc.txt"

@@ -19,7 +19,6 @@ import java.io.IOException;
 @Component
 public class OpenSearchClientProvider {
 
-
     private static final Logger log = LoggerFactory.getLogger(OpenSearchClientProvider.class);
 
     public OpenSearchClient getOpenSearchClient() {

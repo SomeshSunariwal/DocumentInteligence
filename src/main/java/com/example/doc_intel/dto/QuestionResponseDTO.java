@@ -1,29 +1,15 @@
 package com.example.doc_intel.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class QuestionResponseDTO {
-    List<TextSegmentResponseDTO> textSegmentResponseDTOList;
     String result;
-
-    public QuestionResponseDTO(String result, List<TextSegmentResponseDTO> textSegmentResponseDTOList) {
-        this.result = result;
-        this.textSegmentResponseDTOList = textSegmentResponseDTOList;
-    }
-
-    public List<TextSegmentResponseDTO> getTextSegmentResponseDTOList() {
-        return textSegmentResponseDTOList;
-    }
-
-    public void setTextSegmentResponseDTOList(List<TextSegmentResponseDTO> textSegmentResponseDTOList) {
-        this.textSegmentResponseDTOList = textSegmentResponseDTOList;
-    }
-
-    public String getResult() {
-        return result;
-    }
-
-    public void setResult(String result) {
-        this.result = result;
-    }
+    List<TextSegmentResponseDTO> textSegmentResponseDTOList;
 }

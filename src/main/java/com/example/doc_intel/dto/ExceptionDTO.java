@@ -5,9 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class DocumentProcessResponseDTO {
+@NoArgsConstructor
+public class ExceptionDTO {
     String message;
-    Integer Chunksize;
+    Integer code;
 }
