@@ -1,7 +1,7 @@
 package com.example.doc_intel.Utils;
 
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.dto.OpenSearchMetaDataDTO;
+import com.example.doc_intel.DTO.OpenSearchMetaDataDTO;
 import dev.langchain4j.data.document.Metadata;
 
 public class Utils {

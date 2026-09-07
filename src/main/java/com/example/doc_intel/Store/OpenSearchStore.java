@@ -7,16 +7,18 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
+@Lazy
 public class OpenSearchStore implements Store{
 
     private static final Logger log = LoggerFactory.getLogger(OpenSearchStore.class);
 
     private final OpenSearchClientProvider client;
 
-    public OpenSearchStore(OpenSearchClientProvider client) {
+    public OpenSearchStore(@Lazy OpenSearchClientProvider client) {
         this.client = client;
     }
 

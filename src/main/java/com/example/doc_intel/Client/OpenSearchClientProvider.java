@@ -12,11 +12,13 @@ import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 @Component
+@Lazy
 public class OpenSearchClientProvider {
 
     private static final Logger log = LoggerFactory.getLogger(OpenSearchClientProvider.class);
@@ -46,7 +48,8 @@ public class OpenSearchClientProvider {
     @PostConstruct
     public void initializeIndex() {
         try {
-            boolean exists = getOpenSearchClient()
+            boolean exists =
+                    getOpenSearchClient()
                     .indices()
                     .exists(e -> e.index(Constants.INDEX_NAME))
                     .value();

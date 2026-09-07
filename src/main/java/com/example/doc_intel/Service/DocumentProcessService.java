@@ -6,7 +6,7 @@ import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
 import com.example.doc_intel.Exceptions.*;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Store.StoreFactory;
-import com.example.doc_intel.dto.*;
+import com.example.doc_intel.DTO.*;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -41,7 +41,7 @@ public class DocumentProcessService {
     private DocumentEncoder documentEncoder;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
-        this.embeddingStore = storeFactory.giveMeStore("openSearch").giveMeStore();
+        this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
         this.model = chatModelFactory.giveMeChatModel("localAI").giveMeModel();
         this.documentEncoderFactory = documentEncoderFactory;
     }

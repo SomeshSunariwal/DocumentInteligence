@@ -2,10 +2,10 @@ package com.example.doc_intel.Controller;
 
 import com.example.doc_intel.Service.DocumentProcessService;
 import com.example.doc_intel.Service.PublisherService;
-import com.example.doc_intel.dto.DocumentProcessResponseDTO;
-import com.example.doc_intel.dto.FileRequestDTO;
-import com.example.doc_intel.dto.QuestionRequestDTO;
-import com.example.doc_intel.dto.QuestionResponseDTO;
+import com.example.doc_intel.DTO.DocumentProcessResponseDTO;
+import com.example.doc_intel.DTO.FileRequestDTO;
+import com.example.doc_intel.DTO.QuestionRequestDTO;
+import com.example.doc_intel.DTO.QuestionResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

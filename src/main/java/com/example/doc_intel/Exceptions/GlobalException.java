@@ -1,6 +1,6 @@
 package com.example.doc_intel.Exceptions;
 
-import com.example.doc_intel.dto.ExceptionDTO;
+import com.example.doc_intel.DTO.ExceptionDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
