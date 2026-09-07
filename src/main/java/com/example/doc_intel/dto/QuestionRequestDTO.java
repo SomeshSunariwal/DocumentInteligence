@@ -8,5 +8,4 @@ import lombok.Data;
 @AllArgsConstructor
 public class QuestionRequestDTO {
     String question;
-
 }
