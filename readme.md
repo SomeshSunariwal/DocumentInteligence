@@ -14,6 +14,13 @@
 5. Run in main page : `docker compose down`
 6. Run Open Search at: `http://localhost:5601`
 
+### Kafka Setup:
+1. Set Env 
+    ```
+    set USERNAME=admin
+    set PASSWORD=PASSWORD@1212
+    ```
+
 ### Test Commands:
 1. curl -X POST http://localhost:8080/api/document -F "file=@doc.txt"
 2. curl -X POST http://localhost:8080/api/document -F "file=@DocIntel.pdf"

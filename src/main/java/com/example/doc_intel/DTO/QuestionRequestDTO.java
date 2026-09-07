@@ -1,4 +1,4 @@
-package com.example.doc_intel.dto;
+package com.example.doc_intel.DTO;
 
 
 import lombok.AllArgsConstructor;

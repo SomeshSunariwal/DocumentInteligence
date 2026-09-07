@@ -1,13 +1,13 @@
-package com.example.doc_intel.dto;
+package com.example.doc_intel.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class DocumentProcessResponseDTO {
+@NoArgsConstructor
+public class ExceptionDTO {
     String message;
-    Integer Chunksize;
+    Integer code;
 }

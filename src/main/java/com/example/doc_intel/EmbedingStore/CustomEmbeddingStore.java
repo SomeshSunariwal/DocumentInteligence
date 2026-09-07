@@ -5,17 +5,17 @@ import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.OpenSearchIndexingException;
 import com.example.doc_intel.Exceptions.OpenSearchVectoreException;
 import com.example.doc_intel.Utils.Utils;
-import com.example.doc_intel.dto.EmbeddingDocument;
+import com.example.doc_intel.DTO.EmbeddingDocument;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import dev.langchain4j.data.document.Metadata;
 import org.opensearch.client.opensearch._types.query_dsl.KnnQuery;
@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.*;
 
 @Component
+@Lazy
 public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(CustomEmbeddingStore.class);
