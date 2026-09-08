@@ -8,9 +8,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TextSegmentResponseDTO {
+
     private String fileName;
+
     private Integer pageNumber;
+
     private Integer lineNumber;
+
     private String score;
+
     private String text;
 }

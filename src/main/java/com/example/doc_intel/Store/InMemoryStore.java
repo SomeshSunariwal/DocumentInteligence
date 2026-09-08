@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class InMemoryStore implements Store{
+public class InMemoryStore implements Store {
 
     @Override
     public EmbeddingStore<TextSegment> giveMeStore() {

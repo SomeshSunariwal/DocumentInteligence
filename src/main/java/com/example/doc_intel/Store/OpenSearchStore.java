@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @Lazy
-public class OpenSearchStore implements Store{
+public class OpenSearchStore implements Store {
 
     private final OpenSearchClientProvider client;
 

@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DocumentProcessResponseDTO {
+
     String message;
+
     Integer Chunksize;
+
 }

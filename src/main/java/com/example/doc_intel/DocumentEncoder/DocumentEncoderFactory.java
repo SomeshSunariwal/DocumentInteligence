@@ -5,8 +5,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class DocumentEncoderFactory {
 
-   private final TextFileDocumentEncoder textFileDocumentEncoder;
-   private final PDFDocumentEncoder pdfDocumentEncoder;
+    private final TextFileDocumentEncoder textFileDocumentEncoder;
+
+    private final PDFDocumentEncoder pdfDocumentEncoder;
 
     public DocumentEncoderFactory(TextFileDocumentEncoder textFileDocumentParser, PDFDocumentEncoder pdfDocumentParser) {
         this.textFileDocumentEncoder = textFileDocumentParser;
