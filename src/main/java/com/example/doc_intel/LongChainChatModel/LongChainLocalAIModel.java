@@ -2,13 +2,12 @@ package com.example.doc_intel.LongChainChatModel;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.localai.LocalAiChatModel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class LongChainLocalAIModel implements LongChainChatModel {
-    private static final Logger log = LoggerFactory.getLogger(LongChainLocalAIModel.class);
 
     @Override
     public ChatModel giveMeModel() {

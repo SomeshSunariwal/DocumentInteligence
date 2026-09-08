@@ -17,8 +17,12 @@
 ### Kafka Setup:
 1. Set Env 
     ```
-    set USERNAME=admin
-    set PASSWORD=PASSWORD@1212
+    OPENSEARCH_INITIAL_ADMIN_PASSWORD={enter-your-password}
+    KAFKA_USERNAME=admin
+    KAFKA_PASSWORD={enter-your-password}
+    USER_ADMIN_PASSWORD={enter-your-password}
+    TEST_USER=test_user
+    USER_TESTER_PASSWORD={enter-your-password}
     ```
 
 ### Test Commands:

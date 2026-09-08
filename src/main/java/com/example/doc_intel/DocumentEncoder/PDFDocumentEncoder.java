@@ -5,11 +5,10 @@ import com.example.doc_intel.Exceptions.FileReadError;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,10 +16,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class PDFDocumentEncoder implements DocumentEncoder {
-
-    private static final Logger log = LoggerFactory.getLogger(PDFDocumentEncoder.class);
 
     @Override
     public List<TextSegment> encode(final MultipartFile file) {

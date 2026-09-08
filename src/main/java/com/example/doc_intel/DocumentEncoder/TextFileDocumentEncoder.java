@@ -3,16 +3,9 @@ package com.example.doc_intel.DocumentEncoder;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.FileReadError;
 import com.example.doc_intel.Exceptions.FileSupportError;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
-import org.apache.tika.Tika;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,10 +15,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class TextFileDocumentEncoder implements DocumentEncoder {
-
-    private static final Logger log = LoggerFactory.getLogger(TextFileDocumentEncoder.class);
 
     @Override
     public List<TextSegment> encode(MultipartFile file) {
