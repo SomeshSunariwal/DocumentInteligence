@@ -183,7 +183,7 @@ public class DocumentProcessService {
         } catch (NoSuchElementException e) {
             throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
         } catch (Exception e) {
-            throw new ProcessFileException("Internal Server Error");
+            throw new ProcessFileException("Something Went Wrong With Chat Model");
         }
     }
 }

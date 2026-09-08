@@ -1,5 +1,6 @@
 package com.example.doc_intel.Kafka;
 
+import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -11,7 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class KafkaConsumer {
 
     @KafkaListener(
-            topics = "document-events",
+            topics = Constants.DOCUMENT_EVENT,
             groupId = "document-processing-group"
     )
     public void consume(KafkaEventDTO<JsonNode> event) {
