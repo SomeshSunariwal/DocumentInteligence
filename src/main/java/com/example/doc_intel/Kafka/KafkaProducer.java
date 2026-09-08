@@ -1,10 +1,10 @@
 package com.example.doc_intel.Kafka;
 
-import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DTO.KafkaEventDTO;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.DTO.KafkaEventDTO;
 
 @Service
 public class KafkaProducer {
