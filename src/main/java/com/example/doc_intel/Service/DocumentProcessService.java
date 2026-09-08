@@ -20,19 +20,18 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class DocumentProcessService {
 
-    private static final Logger log = LoggerFactory.getLogger(DocumentProcessService.class);
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ChatModel model;
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();

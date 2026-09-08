@@ -3,6 +3,7 @@ package com.example.doc_intel.Client;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.OpenSearchIndexingException;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
@@ -19,9 +20,8 @@ import java.io.IOException;
 
 @Component
 @Lazy
+@Slf4j
 public class OpenSearchClientProvider {
-
-    private static final Logger log = LoggerFactory.getLogger(OpenSearchClientProvider.class);
 
     public OpenSearchClient getOpenSearchClient() {
         HttpHost host = new HttpHost("http", "localhost", 9200);
