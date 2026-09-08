@@ -10,6 +10,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class QuestionResponseDTO {
+
     String result;
+
     List<TextSegmentResponseDTO> textSegmentResponseDTOList;
+
 }

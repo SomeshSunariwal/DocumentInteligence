@@ -3,10 +3,18 @@ package com.example.doc_intel.Service;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
-import com.example.doc_intel.Exceptions.*;
+import com.example.doc_intel.Exceptions.ProcessFileException;
+import com.example.doc_intel.Exceptions.FileSupportError;
+import com.example.doc_intel.Exceptions.MessageLengthException;
+import com.example.doc_intel.Exceptions.NullMessageException;
+import com.example.doc_intel.Exceptions.NoResultFoundException;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Store.StoreFactory;
-import com.example.doc_intel.DTO.*;
+import com.example.doc_intel.DTO.DocumentProcessResponseDTO;
+import com.example.doc_intel.DTO.FileRequestDTO;
+import com.example.doc_intel.DTO.QuestionRequestDTO;
+import com.example.doc_intel.DTO.QuestionResponseDTO;
+import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -25,7 +33,11 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Arrays;
+
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,10 +45,15 @@ import java.util.stream.Collectors;
 public class DocumentProcessService {
 
     private final EmbeddingStore<TextSegment> embeddingStore;
+
     private final ChatModel model;
+
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+
     private final DocumentEncoderFactory documentEncoderFactory;
+
     List<String> supportedTypes = Arrays.asList("pdf", "txt");
+
     private DocumentEncoder documentEncoder;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
@@ -179,7 +196,7 @@ public class DocumentProcessService {
             String answer = model.chat(prompt);
             log.info("Response Generated");
             return new QuestionResponseDTO(answer, textSegmentResponseDTO);
-        } catch (NoSuchElementException e) {
+        } catch (NoResultFoundException e) {
             throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
         } catch (Exception e) {
             throw new ProcessFileException("Something Went Wrong With Chat Model");

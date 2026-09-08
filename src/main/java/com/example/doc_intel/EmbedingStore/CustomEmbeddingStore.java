@@ -14,8 +14,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import dev.langchain4j.data.document.Metadata;
@@ -31,8 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import java.util.UUID;
-
-import java.util.*;
+import java.util.HashMap;
 
 @Component
 @Lazy

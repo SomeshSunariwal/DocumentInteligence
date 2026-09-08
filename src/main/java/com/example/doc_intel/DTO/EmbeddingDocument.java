@@ -10,7 +10,11 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmbeddingDocument {
+
     private List<Float> vector;
+
     private String text;
+
     private OpenSearchMetaDataDTO metadata;
+
 }

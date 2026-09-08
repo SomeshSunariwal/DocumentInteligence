@@ -8,8 +8,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class OpenSearchMetaDataDTO {
+
     private String fileName;
+
     private Integer pageNumber;
+
     private Integer lineNumber;
+
     private String text;
 }

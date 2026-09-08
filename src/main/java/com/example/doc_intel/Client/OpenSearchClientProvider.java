@@ -11,8 +11,6 @@ import org.apache.hc.core5.http.HttpHost;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -50,9 +48,9 @@ public class OpenSearchClientProvider {
         try {
             boolean exists =
                     getOpenSearchClient()
-                    .indices()
-                    .exists(e -> e.index(Constants.INDEX_NAME))
-                    .value();
+                            .indices()
+                            .exists(e -> e.index(Constants.INDEX_NAME))
+                            .value();
             if (exists) {
                 log.info("OpenSearch index '{}' already exists", Constants.INDEX_NAME);
                 return;
@@ -64,14 +62,14 @@ public class OpenSearchClientProvider {
                             .index("pdf-documents")
                             .settings(s -> s.index(i -> i.knn(true)))
                             .mappings(m -> m
-                                .properties("vector", p -> p
-                                    .knnVector(k -> k
-                                        .dimension(384)
-                                        .spaceType("cosinesimil")
+                                    .properties("vector", p -> p
+                                            .knnVector(k -> k
+                                                    .dimension(384)
+                                                    .spaceType("cosinesimil")
+                                            )
                                     )
-                                )
                             )
-                    );
+                );
 
             log.info("OpenSearch index '{}' created successfully", Constants.INDEX_NAME);
         } catch (IOException e) {

@@ -9,6 +9,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class KafkaEventDTO<T> {
+
     private UUID id;
+
     private T message;
+
 }

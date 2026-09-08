@@ -1,6 +1,5 @@
 package com.example.doc_intel.LongChainChatModel;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
