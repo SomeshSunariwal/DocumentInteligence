@@ -11,7 +11,8 @@ import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.MessageLengthException;
 import com.example.doc_intel.Exceptions.NullMessageException;
-import com.example.doc_intel.Exceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.Utils.Utils;
@@ -62,6 +63,9 @@ public class DocumentProcessService {
     public DocumentUploadResponseDTO processDocument(@NonNull MultipartFile file) {
         List<TextSegment> chunks;
         String extension = Utils.getExtension(file);
+        if (Objects.isNull(extension)) {
+            throw new UnSupportedFileException("File Type not support");
+        }
         documentEncoder = documentEncoderFactory.getParser(extension);
 
         try {

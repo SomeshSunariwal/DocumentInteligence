@@ -1,4 +1,4 @@
-package com.example.doc_intel.DTO;
+package com.example.doc_intel.DTO.DocumentsDTO;
 
 import lombok.Data;
 import lombok.Builder;
@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,18 +16,19 @@ import java.util.UUID;
 public class DocumentResponseDTO {
 
     @NonNull
-    String message;
+    private String fileName;
 
     @NonNull
-    String email;
+    private UUID documentId;
+
+    private String URI;
 
     @NonNull
-    String fileName;
+    private Integer version;
 
     @NonNull
-    UUID documentId;
+    private LocalDateTime createdAt;
 
     @NonNull
-    String version;
-
+    private LocalDateTime updatedAt;
 }

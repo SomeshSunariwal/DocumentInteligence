@@ -3,20 +3,21 @@ package com.example.doc_intel.MinIOProcesser.MinIOProcessorImpl;
 import com.example.doc_intel.Client.MinIOClientProvider;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
-import com.example.doc_intel.Exceptions.MinIOObjectPutException;
+import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
-import io.minio.GetObjectArgs;
-import io.minio.GetObjectResponse;
-import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
+import io.minio.ObjectWriteResponse;
+import io.minio.GetObjectResponse;
+import io.minio.GetObjectArgs;
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.Http;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -25,12 +26,8 @@ public class MinIOProcessorImpl implements MinIOProcessor {
 
     private final MinIOClientProvider minIOClientProvider;
 
-    public ObjectWriteResponse putObject(@NonNull String userName, @NonNull MultipartFile file) {
+    public ObjectWriteResponse putObject(@NonNull MultipartFile file, @NonNull String objectKey) {
         try {
-            UUID uuid = UUID.randomUUID();
-
-            String objectKey = userName + File.separator + uuid + File.separator + file.getOriginalFilename();
-
             return minIOClientProvider.getClient().putObject(
                     PutObjectArgs
                             .builder()
@@ -46,9 +43,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     }
 
     @Override
-    public GetObjectResponse getObject(@NonNull String userName, @NonNull UUID documentUUID, @NonNull String fileName) {
-
-        String objectKey = userName + File.separator + documentUUID + File.separator + fileName;
+    public GetObjectResponse getObject(@NonNull String objectKey) {
 
         try {
             return minIOClientProvider.getClient().getObject(
@@ -59,6 +54,24 @@ public class MinIOProcessorImpl implements MinIOProcessor {
             );
         } catch (Exception e) {
             log.info("Exception During Getting Object: {}", e.getMessage());
+            throw new InternalServerErrorException("Internal Server Exception");
+        }
+    }
+
+    @Override
+    public String getPresignedObjectUrl(@NonNull String objectKey) {
+
+        try {
+            return minIOClientProvider.getClient().getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .object(objectKey)
+                            .bucket(Constants.BUCKET_NAME)
+                            .expiry(60, TimeUnit.SECONDS)
+                            .method(Http.Method.GET)
+                            .build()
+            );
+        } catch (Exception e) {
+            log.info("Exception During Getting Presigned Object URL: {}", e.getMessage());
             throw new InternalServerErrorException("Internal Server Exception");
         }
     }

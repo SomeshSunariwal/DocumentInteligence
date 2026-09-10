@@ -2,7 +2,6 @@ package com.example.doc_intel.DocumentEncoder;
 
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.FileReadError;
-import com.example.doc_intel.Exceptions.FileSupportError;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
@@ -50,8 +49,6 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                 }
                 return segments;
             }
-        } catch (FileSupportError e) {
-            throw e;
         } catch (Exception e) {
             throw new FileReadError("Error While Reading File");
         }

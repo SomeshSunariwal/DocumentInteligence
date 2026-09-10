@@ -1,6 +1,11 @@
 package com.example.doc_intel.Exceptions;
 
 import com.example.doc_intel.DTO.ExceptionDTO;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOBucketCreationException;
+import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectoreException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -47,8 +52,8 @@ public class GlobalException {
                 .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
     }
 
-    @ExceptionHandler(FileSupportError.class)
-    ResponseEntity<ExceptionDTO> handleFileSupportError(FileSupportError e) {
+    @ExceptionHandler(UnSupportedFileException.class)
+    ResponseEntity<ExceptionDTO> handleUnSupportedFileException(UnSupportedFileException e) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ExceptionDTO(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
@@ -75,8 +80,8 @@ public class GlobalException {
                 .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
     }
 
-    @ExceptionHandler(BuckerCreationException.class)
-    ResponseEntity<ExceptionDTO> handleBuckerCreationException(BuckerCreationException e) {
+    @ExceptionHandler(MinIOBucketCreationException.class)
+    ResponseEntity<ExceptionDTO> handleMinIOBucketCreationException(MinIOBucketCreationException e) {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
@@ -105,6 +110,20 @@ public class GlobalException {
 
     @ExceptionHandler(PSQLDBException.class)
     ResponseEntity<ExceptionDTO> handlePSQLDBException(PSQLDBException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(UserNotExistException.class)
+    ResponseEntity<ExceptionDTO> handleUserNotExistException(UserNotExistException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(DocumentNotExistException.class)
+    ResponseEntity<ExceptionDTO> handleDocumentNotExistException(DocumentNotExistException e) {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));

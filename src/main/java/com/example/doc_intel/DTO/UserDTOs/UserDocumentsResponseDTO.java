@@ -1,21 +1,27 @@
 package com.example.doc_intel.DTO.UserDTOs;
 
+import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-@Builder
+
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserResponseDTO {
+public class UserDocumentsResponseDTO {
 
-    @NotBlank
+    @NotNull
     private UUID userId;
 
     @NotBlank
@@ -30,4 +36,8 @@ public class UserResponseDTO {
     @NotBlank
     @Email
     private String email;
+
+    @Nullable
+    private List<DocumentResponseDTO> documents = new ArrayList<>();
+
 }

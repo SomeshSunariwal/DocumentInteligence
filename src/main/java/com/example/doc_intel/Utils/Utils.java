@@ -2,7 +2,7 @@ package com.example.doc_intel.Utils;
 
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.OpenSearchMetaDataDTO;
-import com.example.doc_intel.Exceptions.FileSupportError;
+import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import dev.langchain4j.data.document.Metadata;
 import org.jspecify.annotations.NonNull;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,28 +25,28 @@ public class Utils {
         return metadata;
     }
 
-    public static @NonNull String getExtension(MultipartFile file) {
+    public static String getExtension(MultipartFile file) {
         if (file == null) {
-            throw new FileSupportError("Unsupported File Format");
+            throw new UnSupportedFileException("No File Available");
         }
 
         String filename = file.getOriginalFilename();
         if (filename == null || !filename.contains(".")) {
-            throw new FileSupportError("Unsupported File Format");
+            throw new UnSupportedFileException("File format is not proper");
         }
 
         String extension = filename
                 .substring(filename.lastIndexOf('.') + 1)
                 .toLowerCase();
         if (!supportedTypes.contains(extension)) {
-            throw new FileSupportError("Unsupported File Format");
+            return null;
         }
         return extension;
     }
 
     public static String getObjectKey(@NonNull String userName,
-                               @NonNull UUID documentUUID,
-                               @NonNull String fileName) {
+                                      @NonNull UUID documentUUID,
+                                      @NonNull String fileName) {
         return userName + File.separator + documentUUID + File.separator + fileName;
     }
 }

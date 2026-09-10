@@ -1,7 +1,7 @@
 package com.example.doc_intel.Client;
 
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.Exceptions.OpenSearchIndexingException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.auth.AuthScope;

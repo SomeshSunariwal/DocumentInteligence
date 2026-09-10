@@ -2,8 +2,8 @@ package com.example.doc_intel.EmbedingStore;
 
 import com.example.doc_intel.Client.OpenSearchClientProvider;
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.Exceptions.OpenSearchIndexingException;
-import com.example.doc_intel.Exceptions.OpenSearchVectoreException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectoreException;
 import com.example.doc_intel.Utils.Utils;
 import com.example.doc_intel.DTO.EmbeddingDocument;
 import dev.langchain4j.data.embedding.Embedding;

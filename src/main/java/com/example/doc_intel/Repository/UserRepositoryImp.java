@@ -18,4 +18,8 @@ public class UserRepositoryImp {
     public UserEntity deleteByEmailId(@NonNull UserEntity userEntity) {
         return UserRepository.deleteByEmail(userEntity.getEmail());
     }
+
+    public UserEntity findByEmailAndIsActiveTrue(@NonNull String email) {
+        return UserRepository.findByEmailAndIsActiveTrue(email);
+    }
 }

@@ -5,12 +5,12 @@ import io.minio.ObjectWriteResponse;
 import lombok.NonNull;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.UUID;
-
 public interface MinIOProcessor {
 
-    ObjectWriteResponse putObject(@NonNull String userName, @NonNull MultipartFile file);
+    ObjectWriteResponse putObject(@NonNull MultipartFile file, @NonNull String objectKey);
 
-    GetObjectResponse getObject(@NonNull String username, @NonNull UUID uuid, @NonNull String fileName);
+    GetObjectResponse getObject(@NonNull String objectKey);
+
+    String getPresignedObjectUrl(@NonNull String objectKey);
 
 }
