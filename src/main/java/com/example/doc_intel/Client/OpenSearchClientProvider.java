@@ -62,13 +62,13 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
             boolean exists =
                     getClient()
                             .indices()
-                            .exists(e -> e.index(Constants.INDEX_NAME))
+                            .exists(e -> e.index(Constants.OPEN_SEARCH_INDEX_NAME))
                             .value();
             if (exists) {
-                log.info("OpenSearch index '{}' already exists", Constants.INDEX_NAME);
+                log.info("OpenSearch index '{}' already exists", Constants.OPEN_SEARCH_INDEX_NAME);
                 return;
             }
-            log.info("Creating OpenSearch index '{}'", Constants.INDEX_NAME);
+            log.info("Creating OpenSearch index '{}'", Constants.OPEN_SEARCH_INDEX_NAME);
             getClient()
                     .indices()
                     .create(c -> c
@@ -84,7 +84,7 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
                             )
                 );
 
-            log.info("OpenSearch index '{}' created successfully", Constants.INDEX_NAME);
+            log.info("OpenSearch index '{}' created successfully", Constants.OPEN_SEARCH_INDEX_NAME);
         } catch (IOException e) {
             throw new OpenSearchIndexingException("Failed to initialize OpenSearch index");
         }

@@ -60,7 +60,7 @@ public class DocumentService {
                 .documentId(uuid)
                 .fileName(Objects.requireNonNull(file.getOriginalFilename()))
                 .objectKey(objectKey)
-                .bucketName(Constants.BUCKET_NAME)
+                .bucketName(Constants.MINIO_BUCKET_NAME)
                 .contentType(Objects.requireNonNull(file.getContentType()))
                 .fileSize(file.getSize())
                 .createdAt(LocalDateTime.now())

@@ -42,10 +42,10 @@ public class MinIOClientProvider implements Client<MinioClient> {
                     .bucketExists(
                             BucketExistsArgs
                                     .builder()
-                                    .bucket(Constants.BUCKET_NAME)
+                                    .bucket(Constants.MINIO_BUCKET_NAME)
                                     .build());
             if (!found) {
-                getClient().makeBucket(MakeBucketArgs.builder().bucket(Constants.BUCKET_NAME).build());
+                getClient().makeBucket(MakeBucketArgs.builder().bucket(Constants.MINIO_BUCKET_NAME).build());
 
                 VersioningConfiguration config = new VersioningConfiguration(
                         VersioningConfiguration.Status.ENABLED,
@@ -55,13 +55,13 @@ public class MinIOClientProvider implements Client<MinioClient> {
                 );
                 getClient().setBucketVersioning(
                         SetBucketVersioningArgs.builder()
-                                .bucket(Constants.BUCKET_NAME)
+                                .bucket(Constants.MINIO_BUCKET_NAME)
                                 .config(config)
                                 .build()
                 );
-                log.info("Bucket: {} Created.", Constants.BUCKET_NAME);
+                log.info("Bucket: {} Created.", Constants.MINIO_BUCKET_NAME);
             } else {
-                log.info("Bucket: {} already exists.", Constants.BUCKET_NAME);
+                log.info("Bucket: {} already exists.", Constants.MINIO_BUCKET_NAME);
             }
         } catch (Exception e) {
             throw new MinIOBucketCreationException("Exception: " + e.getMessage());

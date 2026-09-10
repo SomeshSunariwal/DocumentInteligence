@@ -91,7 +91,7 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
             // 3. Execute search
             SearchResponse<EmbeddingDocument> response =
                     client.getClient().search(new SearchRequest.Builder()
-                                    .index(Constants.INDEX_NAME)
+                                    .index(Constants.OPEN_SEARCH_INDEX_NAME)
                                     .size(maxResults)
                                     .query(query)
                                     .build(),
@@ -136,7 +136,7 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
             client.getClient().index(
                     i -> i
                             .id(id)
-                            .index(Constants.INDEX_NAME)
+                            .index(Constants.OPEN_SEARCH_INDEX_NAME)
                             .document(document));
         } catch (IOException e) {
             throw new OpenSearchIndexingException("Failed to index embedding");

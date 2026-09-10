@@ -32,7 +32,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     PutObjectArgs
                             .builder()
                             .object(objectKey)
-                            .bucket(Constants.BUCKET_NAME)
+                            .bucket(Constants.MINIO_BUCKET_NAME)
                             .stream(file.getInputStream(), file.getSize(), -1L) // Known Size Object
                             .contentType(file.getContentType())
                             .maxRetries(3)
@@ -48,7 +48,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
         try {
             return minIOClientProvider.getClient().getObject(
                     GetObjectArgs.builder()
-                            .bucket(Constants.BUCKET_NAME)
+                            .bucket(Constants.MINIO_BUCKET_NAME)
                             .object(objectKey)
                             .build()
             );
@@ -65,7 +65,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
             return minIOClientProvider.getClient().getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .object(objectKey)
-                            .bucket(Constants.BUCKET_NAME)
+                            .bucket(Constants.MINIO_BUCKET_NAME)
                             .expiry(60, TimeUnit.SECONDS)
                             .method(Http.Method.GET)
                             .build()

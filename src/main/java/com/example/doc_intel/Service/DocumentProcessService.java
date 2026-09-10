@@ -140,10 +140,10 @@ public class DocumentProcessService {
                 .map(match -> {
                     TextSegment segment = match.embedded();
                     Metadata metadata = segment.metadata();
-                    String fileName = metadata.getString(Constants.FILE_NAME);
-                    Integer pageNumber = metadata.getInteger(Constants.PAGE_NUMBER);
-                    Integer lineNumber = metadata.getInteger(Constants.LINE_NUMBER);
-                    String text = metadata.getString(Constants.TEXT);
+                    String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
+                    Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
+                    Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
+                    String text = metadata.getString(Constants.META_DATA_TEXT);
                     double score = match.score() * 100;
                     textSegmentResponseDTO.add(
                             new TextSegmentResponseDTO(fileName,

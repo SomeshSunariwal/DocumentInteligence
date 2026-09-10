@@ -18,10 +18,10 @@ public class Utils {
 
     public static Metadata convertToMetaData(OpenSearchMetaDataDTO openSearchMetaDataDTO) {
         Metadata metadata = new Metadata();
-        metadata.put(Constants.FILE_NAME, openSearchMetaDataDTO.getFileName());
-        metadata.put(Constants.LINE_NUMBER, openSearchMetaDataDTO.getLineNumber());
-        metadata.put(Constants.PAGE_NUMBER, openSearchMetaDataDTO.getPageNumber());
-        metadata.put(Constants.TEXT, openSearchMetaDataDTO.getText());
+        metadata.put(Constants.META_DATA_FILE_NAME, openSearchMetaDataDTO.getFileName());
+        metadata.put(Constants.META_DATA_LINE_NUMBER, openSearchMetaDataDTO.getLineNumber());
+        metadata.put(Constants.META_DATA_PAGE_NUMBER, openSearchMetaDataDTO.getPageNumber());
+        metadata.put(Constants.META_DATA_TEXT, openSearchMetaDataDTO.getText());
         return metadata;
     }
 

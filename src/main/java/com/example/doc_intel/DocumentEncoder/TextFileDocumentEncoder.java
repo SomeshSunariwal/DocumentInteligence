@@ -37,10 +37,10 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                         continue;
                     }
                     Metadata metadata = new Metadata();
-                    metadata.put(Constants.FILE_NAME, fileName);
-                    metadata.put(Constants.LINE_NUMBER, lineNumber);
-                    metadata.put(Constants.PAGE_NUMBER, 0);
-                    metadata.put(Constants.TEXT, line);
+                    metadata.put(Constants.META_DATA_FILE_NAME, fileName);
+                    metadata.put(Constants.META_DATA_LINE_NUMBER, lineNumber);
+                    metadata.put(Constants.META_DATA_PAGE_NUMBER, 0);
+                    metadata.put(Constants.META_DATA_TEXT, line);
                     TextSegment segment =
                             TextSegment.from(line, metadata);
 

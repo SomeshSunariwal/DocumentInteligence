@@ -41,10 +41,10 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                             continue;
                         }
                         Metadata metadata = new Metadata();
-                        metadata.put(Constants.FILE_NAME, fileName);
-                        metadata.put(Constants.PAGE_NUMBER, page + 1);
-                        metadata.put(Constants.LINE_NUMBER, line + 1);
-                        metadata.put(Constants.TEXT, text);
+                        metadata.put(Constants.META_DATA_FILE_NAME, fileName);
+                        metadata.put(Constants.META_DATA_PAGE_NUMBER, page + 1);
+                        metadata.put(Constants.META_DATA_LINE_NUMBER, line + 1);
+                        metadata.put(Constants.META_DATA_TEXT, text);
                         TextSegment segment = TextSegment.from(text, metadata);
                         segments.add(segment);
                     }
