@@ -12,5 +12,9 @@ public class Constants {
 
     public static final String INDEX_NAME = "pdf-documents";  // Open Search index
 
-    public static final String DOCUMENT_EVENT = "document-events";  // Kafka Topic
+    public static final String DOCUMENT_EVENT = "document-events";
+
+    public static final String BUCKET_NAME = "documents";
+
+    public static final String STORAGE_LOCATION = "documents";
 }

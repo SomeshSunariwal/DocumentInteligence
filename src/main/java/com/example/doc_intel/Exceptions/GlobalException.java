@@ -3,8 +3,11 @@ package com.example.doc_intel.Exceptions;
 import com.example.doc_intel.DTO.ExceptionDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalException {
@@ -71,4 +74,40 @@ public class GlobalException {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
     }
+
+    @ExceptionHandler(BuckerCreationException.class)
+    ResponseEntity<ExceptionDTO> handleBuckerCreationException(BuckerCreationException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(MinIOObjectPutException.class)
+    ResponseEntity<ExceptionDTO> handleMinIOObjectPutException(MinIOObjectPutException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ExceptionDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+
+        String errors = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ExceptionDTO(HttpStatus.BAD_GATEWAY.value(), errors));
+    }
+
+    @ExceptionHandler(PSQLDBException.class)
+    ResponseEntity<ExceptionDTO> handlePSQLDBException(PSQLDBException e) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
 }

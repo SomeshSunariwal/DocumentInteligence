@@ -17,8 +17,8 @@ public class KafkaConsumer {
             topics = Constants.DOCUMENT_EVENT,
             groupId = "document-processing-group"
     )
-    public void consume(KafkaEventDTO<JsonNode> event) {
-        log.info("Event ID: " + event.getId());
-        log.info("Message: " + event.getMessage());
+    public void consumer(KafkaEventDTO<JsonNode> event) {
+        log.info("Event ID: {}", event.getId());
+        log.info("Message: {}", event.getMessage());
     }
 }

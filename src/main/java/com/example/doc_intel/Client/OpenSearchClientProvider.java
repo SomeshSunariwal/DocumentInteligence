@@ -11,22 +11,31 @@ import org.apache.hc.core5.http.HttpHost;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 @Component
-@Lazy
 @Slf4j
-public class OpenSearchClientProvider {
+@Lazy
+public class OpenSearchClientProvider implements Client<OpenSearchClient> {
 
-    public OpenSearchClient getOpenSearchClient() {
-        HttpHost host = new HttpHost("http", "localhost", 9200);
+    private final OpenSearchClient openSearchClient;
+
+
+    OpenSearchClientProvider(
+            @Value("${OPEN.SEARCH.HOST}") String HOST,
+            @Value("${OPEN.SEARCH.PORT}") Integer PORT,
+            @Value("${OPEN.SEARCH.ROOT.USER}") String USER_NAME,
+            @Value("${OPEN.SEARCH.ROOT.PASSWORD}") String PASSWORD
+    ) {
+        HttpHost host = new HttpHost("http", HOST, PORT);
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
                 new AuthScope(host),
-                new UsernamePasswordCredentials("admin", "DocIntel@1221".toCharArray())
+                new UsernamePasswordCredentials(USER_NAME, PASSWORD.toCharArray())
         );
 
         OpenSearchTransport transport = ApacheHttpClient5TransportBuilder
@@ -37,7 +46,11 @@ public class OpenSearchClientProvider {
                                         .setDefaultCredentialsProvider(credentialsProvider))
                 .build();
 
-        return new OpenSearchClient(transport);
+        this.openSearchClient = new OpenSearchClient(transport);
+    }
+
+    public OpenSearchClient getClient() {
+        return openSearchClient;
     }
 
     /***
@@ -47,7 +60,7 @@ public class OpenSearchClientProvider {
     public void initializeIndex() {
         try {
             boolean exists =
-                    getOpenSearchClient()
+                    getClient()
                             .indices()
                             .exists(e -> e.index(Constants.INDEX_NAME))
                             .value();
@@ -56,7 +69,7 @@ public class OpenSearchClientProvider {
                 return;
             }
             log.info("Creating OpenSearch index '{}'", Constants.INDEX_NAME);
-            getOpenSearchClient()
+            getClient()
                     .indices()
                     .create(c -> c
                             .index("pdf-documents")

@@ -1,18 +1,21 @@
 package com.example.doc_intel.Repository;
 
-import com.example.doc_intel.Entity.DocumentEntity;
-import org.springframework.stereotype.Component;
+import com.example.doc_intel.Entity.UserEntity;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
-@Component
+@Repository
+@RequiredArgsConstructor
 public class UserRepositoryImp {
 
-    private UserRepository UserRepository;
+    private final UserRepository UserRepository;
 
-    public UserRepositoryImp(UserRepository UserRepository) {
-        this.UserRepository = UserRepository;
+    public UserEntity add(@NonNull UserEntity userEntity) {
+        return UserRepository.save(userEntity);
     }
 
-    public void add(DocumentEntity documentEntity) {
-        UserRepository.save(documentEntity);
+    public UserEntity deleteByEmailId(@NonNull UserEntity userEntity) {
+        return UserRepository.deleteByEmail(userEntity.getEmail());
     }
 }

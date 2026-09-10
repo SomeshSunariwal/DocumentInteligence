@@ -32,13 +32,12 @@ import java.util.UUID;
 import java.util.HashMap;
 
 @Component
-@Lazy
 @Slf4j
 public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final OpenSearchClientProvider client;
 
-    public CustomEmbeddingStore(OpenSearchClientProvider client) {
+    public CustomEmbeddingStore(@Lazy OpenSearchClientProvider client) {
         this.client = client;
     }
 
@@ -91,7 +90,7 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             // 3. Execute search
             SearchResponse<EmbeddingDocument> response =
-                    client.getOpenSearchClient().search(new SearchRequest.Builder()
+                    client.getClient().search(new SearchRequest.Builder()
                                     .index(Constants.INDEX_NAME)
                                     .size(maxResults)
                                     .query(query)
@@ -134,7 +133,7 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
                 document.put("text", textSegment.text());
                 document.put("metadata", textSegment.metadata().toMap());
             }
-            client.getOpenSearchClient().index(
+            client.getClient().index(
                     i -> i
                             .id(id)
                             .index(Constants.INDEX_NAME)
