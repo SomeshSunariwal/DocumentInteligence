@@ -1,22 +1,23 @@
 package com.example.doc_intel.Entity;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import com.drew.lang.annotations.NotNull;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Column;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -24,7 +25,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users",
-        uniqueConstraints = {@UniqueConstraint(name = "uk_users_email", columnNames = "email")})
+        uniqueConstraints = {
+            @UniqueConstraint(name = "uk_users_email", columnNames = "email")})
 public class UserEntity {
 
     @Id
@@ -57,7 +59,7 @@ public class UserEntity {
 
     @NonNull
     @Column(nullable = false)
-    private String createdBy ;
+    private String createdBy;
 
     @NonNull
     @Column(nullable = false)
