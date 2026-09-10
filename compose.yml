@@ -1,96 +1,96 @@
 services:
-#  opensearch:
-#    image: opensearchproject/opensearch:3
-#    container_name: opensearch
-#    labels:
-#      org.springframework.boot.readiness-check.tcp.disable: true
-#    environment:
-#     - cluster.name=opensearch-cluster
-#     - discovery.type=single-node
-#     - DISABLE_SECURITY_PLUGIN=true
-#     - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
-#    ports:
-#     - "9200:9200"
-#     - "9600:9600"
-#
-#  dashboards:
-#    image: opensearchproject/opensearch-dashboards:3
-#    container_name: opensearch-dashboards
-#    environment:
-#     - OPENSEARCH_HOSTS=["http://opensearch:9200"]
-#     - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
-#    ports:
-#     - "5601:5601"
-#    depends_on:
-#     - opensearch
-#
-#  # =========================
-#  # Kafka
-#  # =========================
-#  kafka:
-#    image: apache/kafka:latest
-#    container_name: kafka
-#    ports:
-#      - "9094:9094"
-#    environment:
-#      KAFKA_NODE_ID: 1
-#      KAFKA_PROCESS_ROLES: broker,controller
-#      # =========================
-#      # Listeners
-#      # =========================
-#      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
-#      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
-#      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-#
-#      # =========================
-#      # SASL
-#      # =========================
-#      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
-#      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-#      KAFKA_LISTENER_NAME_INTERNAL_PLAIN_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${KAFKA_PASSWORD}" user_admin="${USER_ADMIN_PASSWORD}" user_test_user="${USER_TESTER_PASSWORD}";'
-#      KAFKA_LISTENER_NAME_EXTERNAL_PLAIN_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${KAFKA_PASSWORD}" user_admin="${USER_ADMIN_PASSWORD}" user_test_user="${USER_TESTER_PASSWORD}";'
-#
-#      # =========================
-#      # Single node
-#      # =========================
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-#      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-#
-#
-#  # =========================
-#  # Kafka UI
-#  # =========================
-#  kafka-ui:
-#    image: provectuslabs/kafka-ui:latest
-#    container_name: kafka-ui
-#    ports:
-#      - "8081:8080"
-#    environment:
-#      KAFKA_CLUSTERS_0_NAME: local
-#      # Kafka UI is inside Docker
-#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-#      # Authentication
-#      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
-#      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
-#      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${USER_ADMIN_PASSWORD}";'
-#    depends_on:
-#      - kafka
-#
-#  app:
-#    build: .
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myapp
-#      SPRING_DATASOURCE_USERNAME: myuser
-#      SPRING_DATASOURCE_PASSWORD: mypassword
-#    depends_on:
-#      - postgres
+  opensearch:
+    image: opensearchproject/opensearch:3
+    container_name: opensearch
+    labels:
+      org.springframework.boot.readiness-check.tcp.disable: true
+    environment:
+      - cluster.name=opensearch-cluster
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:3
+    container_name: opensearch-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
+    depends_on:
+      - opensearch
+
+  # =========================
+  # Kafka
+  # =========================
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # =========================
+      # Listeners
+      # =========================
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # =========================
+      # SASL
+      # =========================
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_LISTENER_NAME_INTERNAL_PLAIN_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${KAFKA_PASSWORD}" user_admin="${USER_ADMIN_PASSWORD}" user_test_user="${USER_TESTER_PASSWORD}";'
+      KAFKA_LISTENER_NAME_EXTERNAL_PLAIN_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${KAFKA_PASSWORD}" user_admin="${USER_ADMIN_PASSWORD}" user_test_user="${USER_TESTER_PASSWORD}";'
+
+      # =========================
+      # Single node
+      # =========================
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+
+  # =========================
+  # Kafka UI
+  # =========================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      # Kafka UI is inside Docker
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      # Authentication
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME}" password="${USER_ADMIN_PASSWORD}";'
+    depends_on:
+      - kafka
+
+  # app:
+  #   build: .
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myapp
+  #     SPRING_DATASOURCE_USERNAME: myuser
+  #     SPRING_DATASOURCE_PASSWORD: mypassword
+  #   depends_on:
+  #     - postgres
 
   postgres:
     image: postgres:17
@@ -103,6 +103,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   minio:
     image: quay.io/minio/minio
@@ -117,10 +119,6 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
-
-  #    volumes:
-  #      - postgres_data:/var/lib/postgresql/data
-#
 volumes:
   minio_data:
-#    postgres_data:
+  postgres_data:
