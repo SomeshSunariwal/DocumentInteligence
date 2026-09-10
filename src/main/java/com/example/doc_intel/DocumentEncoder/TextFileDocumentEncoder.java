@@ -2,7 +2,6 @@ package com.example.doc_intel.DocumentEncoder;
 
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.FileReadError;
-import com.example.doc_intel.Exceptions.FileSupportError;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
@@ -38,10 +37,10 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                         continue;
                     }
                     Metadata metadata = new Metadata();
-                    metadata.put(Constants.FILE_NAME, fileName);
-                    metadata.put(Constants.LINE_NUMBER, lineNumber);
-                    metadata.put(Constants.PAGE_NUMBER, 0);
-                    metadata.put(Constants.TEXT, line);
+                    metadata.put(Constants.META_DATA_FILE_NAME, fileName);
+                    metadata.put(Constants.META_DATA_LINE_NUMBER, lineNumber);
+                    metadata.put(Constants.META_DATA_PAGE_NUMBER, 0);
+                    metadata.put(Constants.META_DATA_TEXT, line);
                     TextSegment segment =
                             TextSegment.from(line, metadata);
 
@@ -50,8 +49,6 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                 }
                 return segments;
             }
-        } catch (FileSupportError e) {
-            throw e;
         } catch (Exception e) {
             throw new FileReadError("Error While Reading File");
         }
