@@ -10,6 +10,7 @@ import com.example.doc_intel.Repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,8 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * This method use to add the user in the database
@@ -46,7 +49,7 @@ public class UserService {
                 .updatedBy(userRequestDTO.getEmail())
                 .isActive(true)
                 // Password should be encrypted.
-                .passphrase(userRequestDTO.getPassword())
+                .passphrase(passwordEncoder.encode(userRequestDTO.getPassword()))
                 .build();
 
         try {

@@ -1,8 +1,6 @@
 package com.example.doc_intel.Controller;
 
-import com.example.doc_intel.DTO.UserDTOs.DeleteUserRequestDTO;
-import com.example.doc_intel.DTO.UserDTOs.UserRequestDTO;
-import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
+import com.example.doc_intel.DTO.UserDTOs.*;
 import com.example.doc_intel.Service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
