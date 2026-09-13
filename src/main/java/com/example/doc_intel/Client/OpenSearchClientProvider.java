@@ -24,27 +24,28 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
 
     private final OpenSearchClient openSearchClient;
 
-
     OpenSearchClientProvider(
-            @Value("${OPEN.SEARCH.HOST}") String HOST,
-            @Value("${OPEN.SEARCH.PORT}") Integer PORT,
-            @Value("${OPEN.SEARCH.ROOT.USER}") String USER_NAME,
-            @Value("${OPEN.SEARCH.ROOT.PASSWORD}") String PASSWORD
+        @Value("${OPEN.SEARCH.HOST}") String HOST,
+        @Value("${OPEN.SEARCH.PORT}") Integer PORT,
+        @Value("${OPEN.SEARCH.ROOT.USER}") String USER_NAME,
+        @Value("${OPEN.SEARCH.ROOT.PASSWORD}") String PASSWORD
     ) {
         HttpHost host = new HttpHost("http", HOST, PORT);
+
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+
         credentialsProvider.setCredentials(
-                new AuthScope(host),
-                new UsernamePasswordCredentials(USER_NAME, PASSWORD.toCharArray())
+            new AuthScope(host),
+            new UsernamePasswordCredentials(USER_NAME, PASSWORD.toCharArray())
         );
 
         OpenSearchTransport transport = ApacheHttpClient5TransportBuilder
-                .builder(host)
-                .setHttpClientConfigCallback(
-                        httpClientBuilder ->
-                                httpClientBuilder
-                                        .setDefaultCredentialsProvider(credentialsProvider))
-                .build();
+            .builder(host)
+            .setHttpClientConfigCallback(
+                httpClientBuilder ->
+                    httpClientBuilder
+                        .setDefaultCredentialsProvider(credentialsProvider))
+            .build();
 
         this.openSearchClient = new OpenSearchClient(transport);
     }
@@ -60,28 +61,28 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
     public void initializeIndex() {
         try {
             boolean exists =
-                    getClient()
-                            .indices()
-                            .exists(e -> e.index(Constants.OPEN_SEARCH_INDEX_NAME))
-                            .value();
+                getClient()
+                    .indices()
+                    .exists(e -> e.index(Constants.OPEN_SEARCH_INDEX_NAME))
+                    .value();
             if (exists) {
                 log.info("OpenSearch index '{}' already exists", Constants.OPEN_SEARCH_INDEX_NAME);
                 return;
             }
             log.info("Creating OpenSearch index '{}'", Constants.OPEN_SEARCH_INDEX_NAME);
             getClient()
-                    .indices()
-                    .create(c -> c
-                            .index("pdf-documents")
-                            .settings(s -> s.index(i -> i.knn(true)))
-                            .mappings(m -> m
-                                    .properties("vector", p -> p
-                                            .knnVector(k -> k
-                                                    .dimension(384)
-                                                    .spaceType("cosinesimil")
-                                            )
-                                    )
+                .indices()
+                .create(c -> c
+                    .index("pdf-documents")
+                    .settings(s -> s.index(i -> i.knn(true)))
+                    .mappings(m -> m
+                        .properties("vector", p -> p
+                            .knnVector(k -> k
+                                .dimension(384)
+                                .spaceType("cosinesimil")
                             )
+                        )
+                    )
                 );
 
             log.info("OpenSearch index '{}' created successfully", Constants.OPEN_SEARCH_INDEX_NAME);
