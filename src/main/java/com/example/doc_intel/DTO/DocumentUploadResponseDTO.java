@@ -7,10 +7,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentProcessResponseDTO {
+public class DocumentUploadResponseDTO {
 
     String message;
 
-    Integer Chunksize;
+    String version;
 
 }

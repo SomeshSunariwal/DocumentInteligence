@@ -1,15 +1,20 @@
-package com.example.doc_intel.DTO;
+package com.example.doc_intel.DTO.UserDTOs;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FileRequestDTO {
+public class DeleteUserResponseDTO {
 
     @NotBlank
-    String[] message;
+    private String username;
+
+    @NonNull
+    private String version;
+
 }

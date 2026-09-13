@@ -13,12 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class KafkaConsumer {
 
-    @KafkaListener(
-            topics = Constants.DOCUMENT_EVENT,
-            groupId = "document-processing-group"
-    )
-    public void consume(KafkaEventDTO<JsonNode> event) {
-        log.info("Event ID: " + event.getId());
-        log.info("Message: " + event.getMessage());
+//    @KafkaListener(
+//            topics = Constants.DOCUMENT_EVENT,
+//            groupId = "document-processing-group"
+//    )
+    public void consumer(KafkaEventDTO<JsonNode> event) {
+        log.info("Event ID: {}", event.getId());
+        log.info("Message: {}", event.getMessage());
     }
 }

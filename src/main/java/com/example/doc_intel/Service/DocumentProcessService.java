@@ -1,20 +1,21 @@
 package com.example.doc_intel.Service;
 
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
-import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
-import com.example.doc_intel.Exceptions.ProcessFileException;
-import com.example.doc_intel.Exceptions.FileSupportError;
-import com.example.doc_intel.Exceptions.MessageLengthException;
-import com.example.doc_intel.Exceptions.NullMessageException;
-import com.example.doc_intel.Exceptions.NoResultFoundException;
-import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
-import com.example.doc_intel.Store.StoreFactory;
-import com.example.doc_intel.DTO.DocumentProcessResponseDTO;
+import com.example.doc_intel.DTO.DocumentUploadResponseDTO;
 import com.example.doc_intel.DTO.FileRequestDTO;
 import com.example.doc_intel.DTO.QuestionRequestDTO;
 import com.example.doc_intel.DTO.QuestionResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
+import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
+import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
+import com.example.doc_intel.Exceptions.ProcessFileException;
+import com.example.doc_intel.Exceptions.MessageLengthException;
+import com.example.doc_intel.Exceptions.NullMessageException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.UnSupportedFileException;
+import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
+import com.example.doc_intel.Store.StoreFactory;
+import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -28,15 +29,14 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Objects;
-import java.util.Arrays;
 
 import java.util.stream.Collectors;
 
@@ -52,8 +52,6 @@ public class DocumentProcessService {
 
     private final DocumentEncoderFactory documentEncoderFactory;
 
-    List<String> supportedTypes = Arrays.asList("pdf", "txt");
-
     private DocumentEncoder documentEncoder;
 
     DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
@@ -62,9 +60,12 @@ public class DocumentProcessService {
         this.documentEncoderFactory = documentEncoderFactory;
     }
 
-    public DocumentProcessResponseDTO processDocument(MultipartFile file) {
+    public DocumentUploadResponseDTO processDocument(@NonNull MultipartFile file) {
         List<TextSegment> chunks;
-        String extension = getExtension(file);
+        String extension = Utils.getExtension(file);
+        if (Objects.isNull(extension)) {
+            throw new UnSupportedFileException("File Type not support");
+        }
         documentEncoder = documentEncoderFactory.getParser(extension);
 
         try {
@@ -79,29 +80,10 @@ public class DocumentProcessService {
             embeddingStore.add(embedding, chunk);
         }
         log.info("All Chunk Stored Successfully");
-        return new DocumentProcessResponseDTO("Document processed successfully.", chunks.size());
+        return new DocumentUploadResponseDTO("Document processed successfully.", "1");
     }
 
-    private @NonNull String getExtension(MultipartFile file) {
-        if (file == null) {
-            throw new FileSupportError("Unsupported File Format");
-        }
-
-        String filename = file.getOriginalFilename();
-        if (filename == null || !filename.contains(".")) {
-            throw new FileSupportError("Unsupported File Format");
-        }
-
-        String extension = filename
-                .substring(filename.lastIndexOf('.') + 1)
-                .toLowerCase();
-        if (!supportedTypes.contains(extension)) {
-            throw new FileSupportError("Unsupported File Format");
-        }
-        return extension;
-    }
-
-    public DocumentProcessResponseDTO processFile(FileRequestDTO fileRequestDTO) {
+    public DocumentUploadResponseDTO processFile(FileRequestDTO fileRequestDTO) {
 
         String[] message = fileRequestDTO.getMessage();
         if (message.length <= 0) {
@@ -120,7 +102,7 @@ public class DocumentProcessService {
                 String id = embeddingStore.add(embedding, chunk);
                 log.info("Stored chunk: {}", id);
             }
-            return new DocumentProcessResponseDTO("Document processed successfully.", chunks.size());
+            return new DocumentUploadResponseDTO("Document processed successfully.", "1");
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
         }
@@ -158,10 +140,10 @@ public class DocumentProcessService {
                 .map(match -> {
                     TextSegment segment = match.embedded();
                     Metadata metadata = segment.metadata();
-                    String fileName = metadata.getString(Constants.FILE_NAME);
-                    Integer pageNumber = metadata.getInteger(Constants.PAGE_NUMBER);
-                    Integer lineNumber = metadata.getInteger(Constants.LINE_NUMBER);
-                    String text = metadata.getString(Constants.TEXT);
+                    String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
+                    Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
+                    Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
+                    String text = metadata.getString(Constants.META_DATA_TEXT);
                     double score = match.score() * 100;
                     textSegmentResponseDTO.add(
                             new TextSegmentResponseDTO(fileName,
