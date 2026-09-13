@@ -19,15 +19,15 @@ public class MinIOClientProvider implements Client<MinioClient> {
     private final MinioClient client;
 
     public MinIOClientProvider(
-            @Value(("${MINIO.HOST.URL}")) String ENDPOINT,
-            @Value(("${MINIO.ROOT.USER}")) String ACCESS_KEY,
-            @Value(("${MINIO.ROOT.PASSWORD}")) String SECRET
+        @Value(("${MINIO.HOST.URL}")) String ENDPOINT,
+        @Value(("${MINIO.ROOT.USER}")) String ACCESS_KEY,
+        @Value(("${MINIO.ROOT.PASSWORD}")) String SECRET
     ) {
         log.info("Endpoint: {}, Access: {}, Secret: {}", ENDPOINT, ACCESS_KEY, SECRET);
         this.client = MinioClient.builder()
-                .endpoint(ENDPOINT)
-                .credentials(ACCESS_KEY, SECRET)
-                .build();
+            .endpoint(ENDPOINT)
+            .credentials(ACCESS_KEY, SECRET)
+            .build();
     }
 
     @Override
@@ -39,25 +39,25 @@ public class MinIOClientProvider implements Client<MinioClient> {
     void checkBucket() {
         try {
             boolean found = getClient()
-                    .bucketExists(
-                            BucketExistsArgs
-                                    .builder()
-                                    .bucket(Constants.MINIO_BUCKET_NAME)
-                                    .build());
+                .bucketExists(
+                    BucketExistsArgs
+                        .builder()
+                        .bucket(Constants.MINIO_BUCKET_NAME)
+                        .build());
             if (!found) {
                 getClient().makeBucket(MakeBucketArgs.builder().bucket(Constants.MINIO_BUCKET_NAME).build());
 
                 VersioningConfiguration config = new VersioningConfiguration(
-                        VersioningConfiguration.Status.ENABLED,
-                        null,
-                        null,
-                        null
+                    VersioningConfiguration.Status.ENABLED,
+                    null,
+                    null,
+                    null
                 );
                 getClient().setBucketVersioning(
-                        SetBucketVersioningArgs.builder()
-                                .bucket(Constants.MINIO_BUCKET_NAME)
-                                .config(config)
-                                .build()
+                    SetBucketVersioningArgs.builder()
+                        .bucket(Constants.MINIO_BUCKET_NAME)
+                        .config(config)
+                        .build()
                 );
                 log.info("Bucket: {} Created.", Constants.MINIO_BUCKET_NAME);
             } else {
