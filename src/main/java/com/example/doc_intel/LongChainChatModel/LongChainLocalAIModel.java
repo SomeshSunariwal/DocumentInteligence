@@ -1,5 +1,6 @@
 package com.example.doc_intel.LongChainChatModel;
 
+import com.example.doc_intel.Entity.AIConfig;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.localai.LocalAiChatModel;
 import lombok.extern.slf4j.Slf4j;
@@ -10,11 +11,13 @@ import org.springframework.stereotype.Component;
 public class LongChainLocalAIModel implements LongChainChatModel {
 
     @Override
-    public ChatModel giveMeModel() {
+    public ChatModel giveMeModel(AIConfig aiConfig) {
+
         log.info("Using Local AI Chat Model");
+
         return LocalAiChatModel.builder()
-                .baseUrl("http://127.0.0.1:1234/v1")
-                .modelName("dolphin3.0-llama3.1-8b")
+                .baseUrl(aiConfig.getBaseURL())
+                .modelName(aiConfig.getModelName())
                 .maxTokens(50)
 //                .logRequests(true)
 //                .logResponses(true)

@@ -24,9 +24,7 @@ import lombok.NonNull;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users",
-        uniqueConstraints = {
-            @UniqueConstraint(name = "uk_users_email", columnNames = "email")})
+@Table(name = "users")
 public class UserEntity {
 
     @Id
@@ -34,7 +32,7 @@ public class UserEntity {
     private Integer id;
 
     @NotNull
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(nullable = false, unique = true)
     private UUID userId;
 
     @NotBlank
@@ -50,8 +48,12 @@ public class UserEntity {
     private String lastName;
 
     @NotBlank
-    @Column(unique = true, nullable = false)
+    @Column(name = "user_email", unique = true, nullable = false)
     private String email;
+
+    @NotBlank
+    @Column(unique = true, nullable = false)
+    private String passphrase;
 
     @NonNull
     @Column(nullable = false)

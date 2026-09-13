@@ -1,13 +1,14 @@
 package com.example.doc_intel.Service;
 
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DTO.DocumentUploadResponseDTO;
+import com.example.doc_intel.DTO.ChatModel.*;
+import com.example.doc_intel.DTO.DocumentsDTO.DocumentUploadResponseDTO;
 import com.example.doc_intel.DTO.FileRequestDTO;
-import com.example.doc_intel.DTO.QuestionRequestDTO;
-import com.example.doc_intel.DTO.QuestionResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
+import com.example.doc_intel.Enums.ChatModelType;
+import com.example.doc_intel.Enums.StoreType;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.MessageLengthException;
 import com.example.doc_intel.Exceptions.NullMessageException;
@@ -31,6 +32,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,17 +49,17 @@ public class DocumentProcessService {
 
     private final EmbeddingStore<TextSegment> embeddingStore;
 
-    private final ChatModel model;
-
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
 
     private final DocumentEncoderFactory documentEncoderFactory;
 
     private DocumentEncoder documentEncoder;
 
-    DocumentProcessService(StoreFactory storeFactory, ChatModelFactory chatModelFactory, DocumentEncoderFactory documentEncoderFactory) {
-        this.embeddingStore = storeFactory.giveMeStore("inMemory").giveMeStore();
-        this.model = chatModelFactory.giveMeChatModel("localAI").giveMeModel();
+    DocumentProcessService(StoreFactory storeFactory,
+                           ChatModelFactory chatModelFactory,
+                           DocumentEncoderFactory documentEncoderFactory,
+                           @Value("${vector.data.store}") final StoreType storeType) {
+        this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
         this.documentEncoderFactory = documentEncoderFactory;
     }
 
@@ -105,83 +108,6 @@ public class DocumentProcessService {
             return new DocumentUploadResponseDTO("Document processed successfully.", "1");
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
-        }
-    }
-
-    public QuestionResponseDTO processQuestion(QuestionRequestDTO questionDTO) {
-        List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
-        String message = questionDTO.getQuestion();
-
-        if (Objects.isNull(message)) {
-            throw new NullMessageException("Message cannot be null");
-        }
-        if (message.isEmpty()) {
-            throw new MessageLengthException("Please Provide a Question");
-        }
-
-        // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(message).content();
-
-        // 3. Search OpenSearch
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
-                .maxResults(5)
-                .minScore(0.5)
-                .build();
-
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
-
-        // 4. Get relevant chunks
-        List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
-        log.info("Retrieved chunks: {}", matches.size());
-
-        // 5. Build context
-        String context = matches.stream()
-                .map(match -> {
-                    TextSegment segment = match.embedded();
-                    Metadata metadata = segment.metadata();
-                    String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
-                    Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
-                    Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-                    String text = metadata.getString(Constants.META_DATA_TEXT);
-                    double score = match.score() * 100;
-                    textSegmentResponseDTO.add(
-                            new TextSegmentResponseDTO(fileName,
-                                    pageNumber,
-                                    lineNumber,
-                                    text,
-                                    String.format("%.2f%%", score)));
-                    return match.embedded().text();
-                })
-                .collect(Collectors.joining("\n\n"));
-
-        // 6. Create RAG prompt
-        String prompt = """
-                You are a document question-answering assistant.
-                
-                Answer the question using ONLY the context
-                provided below.
-                
-                If the answer is not present in the context,
-                say that you do not know.
-                
-                CONTEXT:
-                %s
-                
-                QUESTION:
-                %s
-                
-                ANSWER:
-                """.formatted(context, questionDTO.getQuestion());
-
-        try {
-            String answer = model.chat(prompt);
-            log.info("Response Generated");
-            return new QuestionResponseDTO(answer, textSegmentResponseDTO);
-        } catch (NoResultFoundException e) {
-            throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
-        } catch (Exception e) {
-            throw new ProcessFileException("Something Went Wrong With Chat Model");
         }
     }
 }

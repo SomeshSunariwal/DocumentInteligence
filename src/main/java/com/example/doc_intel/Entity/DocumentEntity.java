@@ -70,6 +70,6 @@ public class DocumentEntity {
     private Integer version;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false)
+    @JoinColumn(name = "user_email", referencedColumnName = "user_email", nullable = false)
     private UserEntity user;
 }

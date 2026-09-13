@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,13 +46,13 @@ public class DocumentService {
             throw new UnSupportedFileException("File Type not support");
         }
         // User Check
-        UserEntity userEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (Objects.isNull(userEntity)) {
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
             log.info("User Not Exist");
             throw new UserNotExistException("User not Exist");
         }
 
-        String userName = userEntity.getUsername();
+        String userName = optionalUserEntity.get().getUsername();
 
         // Placed Document Object
         UUID uuid = UUID.randomUUID();
@@ -69,7 +70,7 @@ public class DocumentService {
                 .updatedBy(userName)
                 .isActive(true)
                 .version(1)
-                .user(userEntity)
+                .user(optionalUserEntity.get())
                 .build();
 
         DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
@@ -99,8 +100,8 @@ public class DocumentService {
         }
 
         // User Check
-        UserEntity userEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (Objects.isNull(userEntity)) {
+        Optional<UserEntity> optionalUserEntity  = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
             throw new UserNotExistException("User not Exist");
         }
@@ -140,8 +141,8 @@ public class DocumentService {
                                               @NonNull UUID documentId) {
 
         // User Check
-        UserEntity userEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (Objects.isNull(userEntity)) {
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
             throw new UserNotExistException("User not Exist");
         }
@@ -168,14 +169,15 @@ public class DocumentService {
     @Transactional
     public UserDocumentsResponseDTO getUserAllDocuments(@NonNull String email) {
         // User Check
-        UserEntity userEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (Objects.isNull(userEntity)) {
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
             throw new UserNotExistException("User not Exist");
         }
 
         // Documen Check
-        List<DocumentEntity> documentEntity = documentsRepository.findByUser_UserIdAndIsActiveTrue(userEntity.getUserId());
+        UserEntity userEntity = optionalUserEntity.get();
+        List<DocumentEntity> documentEntity = documentsRepository.findByUser_EmailAndIsActiveTrue(email);
         if (documentEntity.isEmpty()) {
             log.info("No Documents Found");
         }

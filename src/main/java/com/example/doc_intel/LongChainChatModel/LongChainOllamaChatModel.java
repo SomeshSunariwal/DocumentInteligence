@@ -1,5 +1,6 @@
 package com.example.doc_intel.LongChainChatModel;
 
+import com.example.doc_intel.Entity.AIConfig;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import lombok.extern.slf4j.Slf4j;
@@ -9,17 +10,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class LongChainOllamaChatModel implements LongChainChatModel {
 
-    private final String BASE_URL = "http://127.0.0.1:1234/v1";
-
-    private final String MODEL_NAME = "dolphin3.0-llama3.1-8b";
-
     @Override
-    public ChatModel giveMeModel() {
+    public ChatModel giveMeModel(AIConfig aiConfig) {
+
         log.info("Using Ollama Chat Model");
         return OllamaChatModel
                 .builder()
-                .baseUrl(BASE_URL)
-                .modelName(MODEL_NAME)
+                .baseUrl(aiConfig.getBaseURL())
+                .modelName(aiConfig.getModelName())
                 .temperature(0.0)
                 .build();
     }

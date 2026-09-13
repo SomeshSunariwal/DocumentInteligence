@@ -1,4 +1,4 @@
-package com.example.doc_intel.DTO;
+package com.example.doc_intel.DTO.DocumentsDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

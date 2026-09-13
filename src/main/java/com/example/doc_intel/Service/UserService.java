@@ -6,7 +6,7 @@ import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Exceptions.PSQLDBException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
-import com.example.doc_intel.Repository.UserRepositoryImp;
+import com.example.doc_intel.Repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,13 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepositoryImp userRepositoryImp;
+    private final UserRepository userRepository;
 
     /**
      * This method use to add the user in the database
@@ -44,10 +45,12 @@ public class UserService {
                 .updateAt(LocalDateTime.now())
                 .updatedBy(userRequestDTO.getEmail())
                 .isActive(true)
+                // Password should be encrypted.
+                .passphrase(userRequestDTO.getPassword())
                 .build();
 
         try {
-            UserEntity response = userRepositoryImp.add(userEntity);
+            UserEntity response = userRepository.save(userEntity);
             return UserResponseDTO.builder()
                     .userId(response.getUserId())
                     .username(response.getUsername())
@@ -73,7 +76,11 @@ public class UserService {
                 .email(deleteUserRequestDTO.getEmail())
                 .build();
 
-        UserEntity response = userRepositoryImp.deleteByEmailId(userEntity);
+        Optional<UserEntity> optionalResponse = userRepository.deleteByEmail(userEntity.getEmail());
+        if(optionalResponse.isEmpty()) {
+            throw new UserNotExistException("User Not Found");
+        }
+        UserEntity response = optionalResponse.get();
 
         return UserResponseDTO.builder()
                 .username(response.getUsername())
@@ -90,10 +97,12 @@ public class UserService {
     public UserResponseDTO softDeleteUser(@NonNull String email) {
 
         // Convert Input Request Object to DataBase
-        UserEntity userEntity = userRepositoryImp.findByEmailAndIsActiveTrue(email);
-        if(Objects.isNull(userEntity)) {
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if(optionalUserEntity.isEmpty()) {
             throw new UserNotExistException("User Not Found");
         }
+
+        UserEntity userEntity = optionalUserEntity.get();
         // Soft deleting the user
         userEntity.setIsActive(false);
 

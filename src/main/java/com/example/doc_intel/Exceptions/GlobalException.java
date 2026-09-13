@@ -1,6 +1,7 @@
 package com.example.doc_intel.Exceptions;
 
 import com.example.doc_intel.DTO.ExceptionDTO;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOBucketCreationException;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
@@ -118,8 +119,8 @@ public class GlobalException {
     @ExceptionHandler(UserNotExistException.class)
     ResponseEntity<ExceptionDTO> handleUserNotExistException(UserNotExistException e) {
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
     }
 
     @ExceptionHandler(DocumentNotExistException.class)
@@ -127,6 +128,13 @@ public class GlobalException {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(AIConfigNotExistException.class)
+    ResponseEntity<ExceptionDTO> handleAIConfigNotExistException(AIConfigNotExistException e) {
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
     }
 
 }
