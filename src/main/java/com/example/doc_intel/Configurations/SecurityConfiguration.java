@@ -1,5 +1,6 @@
 package com.example.doc_intel.Configurations;
 
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +17,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -43,8 +43,7 @@ public class SecurityConfiguration {
             // Spring Security handles Bearer JWT
             .oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwt -> {
-                })
-            );
+                }));
 
         return http.build();
     }
@@ -56,15 +55,12 @@ public class SecurityConfiguration {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
-
         return configuration.getAuthenticationManager();
     }
 
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 }

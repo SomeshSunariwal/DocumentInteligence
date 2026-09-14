@@ -1,12 +1,18 @@
 package com.example.doc_intel.Controller;
 
-import com.example.doc_intel.DTO.ChatModel.*;
+import com.example.doc_intel.DTO.ChatModel.SearchRequestDTO;
+import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
+import com.example.doc_intel.DTO.ChatModel.AISearchResponseDTO;
 import com.example.doc_intel.Service.SearchService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @AllArgsConstructor
 @RestController

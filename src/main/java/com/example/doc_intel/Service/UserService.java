@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,6 +28,7 @@ public class UserService {
 
     /**
      * This method use to add the user in the database
+     *
      * @param userRequestDTO Input Request parameter
      * @return UserResponseDTO
      */
@@ -38,29 +38,29 @@ public class UserService {
 
         // Convert Input Request Object to DataBase
         UserEntity userEntity = UserEntity.builder()
-                .userId(uuid)
-                .username(userRequestDTO.getUsername())
-                .firstName(userRequestDTO.getFirstName())
-                .lastName(userRequestDTO.getLastName())
-                .email(userRequestDTO.getEmail())
-                .createdAt(LocalDateTime.now())
-                .createdBy(userRequestDTO.getEmail())
-                .updateAt(LocalDateTime.now())
-                .updatedBy(userRequestDTO.getEmail())
-                .isActive(true)
-                // Password should be encrypted.
-                .passphrase(passwordEncoder.encode(userRequestDTO.getPassword()))
-                .build();
+            .userId(uuid)
+            .username(userRequestDTO.getUsername())
+            .firstName(userRequestDTO.getFirstName())
+            .lastName(userRequestDTO.getLastName())
+            .email(userRequestDTO.getEmail())
+            .createdAt(LocalDateTime.now())
+            .createdBy(userRequestDTO.getEmail())
+            .updateAt(LocalDateTime.now())
+            .updatedBy(userRequestDTO.getEmail())
+            .isActive(true)
+            // Password should be encrypted.
+            .passphrase(passwordEncoder.encode(userRequestDTO.getPassword()))
+            .build();
 
         try {
             UserEntity response = userRepository.save(userEntity);
             return UserResponseDTO.builder()
-                    .userId(response.getUserId())
-                    .username(response.getUsername())
-                    .firstName(response.getFirstName())
-                    .lastName(response.getLastName())
-                    .email(response.getEmail())
-                    .build();
+                .userId(response.getUserId())
+                .username(response.getUsername())
+                .firstName(response.getFirstName())
+                .lastName(response.getLastName())
+                .email(response.getEmail())
+                .build();
         } catch (DataIntegrityViolationException e) {
             throw new PSQLDBException(e.getMostSpecificCause().getMessage());
         }
@@ -68,6 +68,7 @@ public class UserService {
 
     /**
      * This method is used to delete the user using EmailId
+     *
      * @param deleteUserRequestDTO input to delete the User By Email Id
      * @return UserName and Email in response
      */
@@ -76,23 +77,24 @@ public class UserService {
 
         // Convert Input Request Object to DataBase
         UserEntity userEntity = UserEntity.builder()
-                .email(deleteUserRequestDTO.getEmail())
-                .build();
+            .email(deleteUserRequestDTO.getEmail())
+            .build();
 
         Optional<UserEntity> optionalResponse = userRepository.deleteByEmail(userEntity.getEmail());
-        if(optionalResponse.isEmpty()) {
+        if (optionalResponse.isEmpty()) {
             throw new UserNotExistException("User Not Found");
         }
         UserEntity response = optionalResponse.get();
 
         return UserResponseDTO.builder()
-                .username(response.getUsername())
-                .email(response.getEmail())
-                .build();
+            .username(response.getUsername())
+            .email(response.getEmail())
+            .build();
     }
 
     /**
      * This method is used to softly delete the user
+     *
      * @param email input parameter
      * @return user object
      */
@@ -101,7 +103,7 @@ public class UserService {
 
         // Convert Input Request Object to DataBase
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if(optionalUserEntity.isEmpty()) {
+        if (optionalUserEntity.isEmpty()) {
             throw new UserNotExistException("User Not Found");
         }
 
@@ -110,12 +112,12 @@ public class UserService {
         userEntity.setIsActive(false);
 
         return UserResponseDTO.builder()
-                .userId(userEntity.getUserId())
-                .firstName(userEntity.getFirstName())
-                .lastName(userEntity.getLastName())
-                .username(userEntity.getUsername())
-                .email(userEntity.getEmail())
-                .build();
+            .userId(userEntity.getUserId())
+            .firstName(userEntity.getFirstName())
+            .lastName(userEntity.getLastName())
+            .username(userEntity.getUsername())
+            .email(userEntity.getEmail())
+            .build();
     }
 
 }

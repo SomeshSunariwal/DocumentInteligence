@@ -4,13 +4,10 @@ import com.example.doc_intel.DTO.UserDTOs.UserLoginRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserLoginResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
 
 @Component
 @AllArgsConstructor

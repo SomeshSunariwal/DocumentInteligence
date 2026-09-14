@@ -1,47 +1,32 @@
 package com.example.doc_intel.Service;
 
-import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DTO.ChatModel.*;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentUploadResponseDTO;
 import com.example.doc_intel.DTO.FileRequestDTO;
-import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
-import com.example.doc_intel.Enums.ChatModelType;
 import com.example.doc_intel.Enums.StoreType;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.MessageLengthException;
-import com.example.doc_intel.Exceptions.NullMessageException;
-import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
 import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.opensearch.core.SearchRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Objects;
-
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
