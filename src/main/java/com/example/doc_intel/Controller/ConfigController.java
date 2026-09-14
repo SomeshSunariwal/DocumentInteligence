@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PathVariable;
 
+
+/**
+ * Controller class for handling configuration-related API endpoints.
+ */
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/users")
@@ -19,12 +22,11 @@ public class ConfigController {
 
     private final ConfigService configService;
 
-    @PostMapping("/config/{email}")
+    @PostMapping("/config")
     public ResponseEntity<AIConfigResponseDTO> addOrUpdateConfig(
-        @PathVariable String email,
         @Valid @RequestBody AIConfigRequestDTO aiConfigRequestDTO) {
 
-        AIConfigResponseDTO result = configService.addOrUpdateConfig(email, aiConfigRequestDTO);
+        AIConfigResponseDTO result = configService.addOrUpdateConfig(aiConfigRequestDTO);
         return ResponseEntity.ok().body(result);
     }
 }

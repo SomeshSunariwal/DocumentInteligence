@@ -11,8 +11,8 @@ import io.minio.GetObjectResponse;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.Http;
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class MinIOProcessorImpl implements MinIOProcessor {
 
     private final MinIOClientProvider minIOClientProvider;

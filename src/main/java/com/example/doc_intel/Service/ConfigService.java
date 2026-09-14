@@ -7,7 +7,7 @@ import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.UserRepository;
-import jakarta.validation.constraints.NotBlank;
+import com.example.doc_intel.Utils.Utils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,8 +22,8 @@ public class ConfigService {
 
     private final UserRepository userRepository;
 
-    public AIConfigResponseDTO addOrUpdateConfig(@NotBlank String email, @NonNull AIConfigRequestDTO aiConfigRequestDTO) {
-
+    public AIConfigResponseDTO addOrUpdateConfig(@NonNull AIConfigRequestDTO aiConfigRequestDTO) {
+        String email = Utils.getUserEmail();
         // getConfig if present
         Optional<UserEntity> userEntity = userRepository.findByEmailAndIsActiveTrue(email);
 

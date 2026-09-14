@@ -5,6 +5,7 @@ import com.example.doc_intel.Exceptions.FileReadError;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -21,7 +22,8 @@ import java.util.List;
 public class PDFDocumentEncoder implements DocumentEncoder {
 
     @Override
-    public List<TextSegment> encode(final MultipartFile file) {
+    public List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
+                                    @NonNull final Integer version) {
         log.info("Using PDF Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
@@ -44,7 +46,8 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                         metadata.put(Constants.META_DATA_FILE_NAME, fileName);
                         metadata.put(Constants.META_DATA_PAGE_NUMBER, page + 1);
                         metadata.put(Constants.META_DATA_LINE_NUMBER, line + 1);
-                        metadata.put(Constants.META_DATA_TEXT, text);
+                        metadata.put(Constants.META_USER_ID, userId);
+                        metadata.put(Constants.META_DOCUMENT_VERSION, version);
                         TextSegment segment = TextSegment.from(text, metadata);
                         segments.add(segment);
                     }

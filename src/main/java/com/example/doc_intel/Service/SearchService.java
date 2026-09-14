@@ -18,6 +18,7 @@ import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Store.StoreFactory;
+import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -38,6 +39,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
 @Component
 @Slf4j
@@ -64,8 +67,14 @@ public class SearchService {
         this.userRepository = userRepository;
     }
 
+    public SearchResponseDTO processSearch(final SearchRequestDTO searchRequestDTO) {
+        String email = Utils.getUserEmail();
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
+        if (optionalUserEntity.isEmpty()) {
+            throw new UserNotExistException("User Not Exist");
+        }
+        UserEntity userEntity = optionalUserEntity.get();
 
-    public SearchResponseDTO processSearch(final String email, final SearchRequestDTO searchRequestDTO) {
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
         String message = searchRequestDTO.getSearchTerm();
 
@@ -76,11 +85,6 @@ public class SearchService {
             throw new MessageLengthException("Please Provide a Question");
         }
 
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
-        if (optionalUserEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Exist");
-        }
-
         // 2. Convert question into embedding
         Embedding queryEmbedding = embeddingModel.embed(message).content();
 
@@ -89,6 +93,7 @@ public class SearchService {
             .queryEmbedding(queryEmbedding)
             .maxResults(5)
             .minScore(0.5)
+            .filter(metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId().toString()))
             .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
@@ -104,14 +109,20 @@ public class SearchService {
             String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
             Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
             Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-            String text = metadata.getString(Constants.META_DATA_TEXT);
+            String text = segment.text();
             double score = match.score() * 100;
+            Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
+            String userId = metadata.getString(Constants.META_USER_ID);
             textSegmentResponseDTO.add(
-                new TextSegmentResponseDTO(fileName,
-                    pageNumber,
-                    lineNumber,
-                    text,
-                    String.format("%.2f%%", score)));
+                TextSegmentResponseDTO.builder()
+                    .fileName(fileName)
+                    .pageNumber(pageNumber)
+                    .lineNumber(lineNumber)
+                    .text(text)
+                    .version(version)
+                    .userId(userId)
+                    .score(String.format("%.2f%%", score))
+                    .build());
         });
 
         try {
@@ -127,10 +138,16 @@ public class SearchService {
 
     }
 
-    public AISearchResponseDTO processAISearch(final String email, final SearchRequestDTO searchRequestDTO) {
+    public AISearchResponseDTO processAISearch(final SearchRequestDTO searchRequestDTO) {
+        String email = Utils.getUserEmail();
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
+        if (optionalUserEntity.isEmpty()) {
+            throw new UserNotExistException("User Not Exist");
+        }
+        UserEntity userEntity = optionalUserEntity.get();
+
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
         String message = searchRequestDTO.getSearchTerm();
-
         if (Objects.isNull(message)) {
             throw new NullMessageException("Message cannot be null");
         }
@@ -148,6 +165,7 @@ public class SearchService {
             .queryEmbedding(queryEmbedding)
             .maxResults(5)
             .minScore(0.5)
+            .filter(metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId()))
             .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
@@ -164,14 +182,18 @@ public class SearchService {
                 String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
                 Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
                 Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-                String text = metadata.getString(Constants.META_DATA_TEXT);
+                String text = segment.text();
                 double score = match.score() * 100;
+                Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
                 textSegmentResponseDTO.add(
-                    new TextSegmentResponseDTO(fileName,
-                        pageNumber,
-                        lineNumber,
-                        text,
-                        String.format("%.2f%%", score)));
+                    TextSegmentResponseDTO.builder()
+                        .fileName(fileName)
+                        .pageNumber(pageNumber)
+                        .lineNumber(lineNumber)
+                        .text(text)
+                        .version(version)
+                        .score(String.format("%.2f%%", score))
+                        .build());
                 return match.embedded().text();
             })
             .collect(Collectors.joining("\n\n"));
@@ -211,13 +233,7 @@ public class SearchService {
     }
 
     private ChatModel getChatModel(@NotBlank String email) {
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
-        if (optionalUserEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Exist");
-        }
-        UserEntity userEntity = optionalUserEntity.get();
-
-        Optional<AIConfig> optionalAIConfig = aiConfigRepository.findByUser_Email(userEntity.getEmail());
+        Optional<AIConfig> optionalAIConfig = aiConfigRepository.findByUser_Email(email);
         if (optionalAIConfig.isEmpty()) {
             throw new AIConfigNotExistException("AI Config Not Exist");
         }

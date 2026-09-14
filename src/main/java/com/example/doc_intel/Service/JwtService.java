@@ -25,7 +25,6 @@ public class JwtService {
             .subject(username)
             .issuer("DocumentIntelligence.Com")
             .issuedAt(new Date())
-            .content("User: " + username)
             .expiration(
                 new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(15))
             )

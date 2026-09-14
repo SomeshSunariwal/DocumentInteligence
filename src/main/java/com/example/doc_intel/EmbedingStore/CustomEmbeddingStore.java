@@ -2,8 +2,10 @@ package com.example.doc_intel.EmbedingStore;
 
 import com.example.doc_intel.Client.OpenSearchClientProvider;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
 import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectoreException;
+import com.example.doc_intel.Exceptions.OpenSearchException.UnsupportedFilterException;
 import com.example.doc_intel.Utils.Utils;
 import com.example.doc_intel.DTO.EmbeddingDocument;
 import dev.langchain4j.data.embedding.Embedding;
@@ -12,9 +14,11 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import dev.langchain4j.data.document.Metadata;
 import org.opensearch.client.opensearch._types.query_dsl.KnnQuery;
@@ -37,7 +41,7 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final OpenSearchClientProvider client;
 
-    public CustomEmbeddingStore(@Lazy OpenSearchClientProvider client) {
+    public CustomEmbeddingStore(OpenSearchClientProvider client) {
         this.client = client;
     }
 
@@ -78,24 +82,27 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
             List<Float> queryVector = request.queryEmbedding().vectorAsList();
             int maxResults = request.maxResults();
 
+            Query userFilter = buildFilterQuery(request.filter());
+
             KnnQuery knnQuery = new KnnQuery.Builder()
-                    .field("vector")
-                    .vector(queryVector)
-                    .k(maxResults)
-                    .build();
+                .field("vector")
+                .vector(queryVector)
+                .k(maxResults)
+                .filter(userFilter)
+                .build();
 
             Query query = new Query.Builder()
-                    .knn(knnQuery)
-                    .build();
+                .knn(knnQuery)
+                .build();
 
             // 3. Execute search
             SearchResponse<EmbeddingDocument> response =
-                    client.getClient().search(new SearchRequest.Builder()
-                                    .index(Constants.OPEN_SEARCH_INDEX_NAME)
-                                    .size(maxResults)
-                                    .query(query)
-                                    .build(),
-                            EmbeddingDocument.class);
+                client.getClient().search(new SearchRequest.Builder()
+                        .index(Constants.OPEN_SEARCH_INDEX_NAME)
+                        .size(maxResults)
+                        .query(query)
+                        .build(),
+                    EmbeddingDocument.class);
 
             for (Hit<EmbeddingDocument> hit : response.hits().hits()) {
                 EmbeddingDocument source = hit.source();
@@ -116,10 +123,11 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
 
         } catch (IOException e) {
-            log.error("Failed -", e);
+            log.error("OpenSearch vector search failed", e);
             throw new OpenSearchVectoreException("OpenSearch vector search failed");
         } catch (Exception e) {
-            log.error("Failed -> ", e);
+            log.error("OpenSearch failed", e);
+            throw new InternalServerErrorException("OpenSearch failed");
         }
         return new EmbeddingSearchResult<>(matches);
     }
@@ -134,12 +142,25 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
                 document.put("metadata", textSegment.metadata().toMap());
             }
             client.getClient().index(
-                    i -> i
-                            .id(id)
-                            .index(Constants.OPEN_SEARCH_INDEX_NAME)
-                            .document(document));
+                i -> i
+                    .id(id)
+                    .index(Constants.OPEN_SEARCH_INDEX_NAME)
+                    .document(document));
         } catch (IOException e) {
             throw new OpenSearchIndexingException("Failed to index embedding");
         }
+    }
+
+    private Query buildFilterQuery(Filter filter) {
+        if (filter instanceof IsEqualTo equalTo) {
+            return new Query.Builder()
+                .term(t -> t
+                    .field("metadata." + equalTo.key() + ".keyword")
+                    .value(FieldValue.of(equalTo.comparisonValue().toString()))
+                )
+                .build();
+        }
+
+        throw new UnsupportedFilterException("Internal Server Error");
     }
 }

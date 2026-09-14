@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
+
+/**
+ * Controller class for handling user-related API endpoints.
+ */
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -45,7 +49,7 @@ public class UserController {
      * This function soft delete the user from the table.
      * it will make the user inactive.
      */
-    @DeleteMapping("/{email}")
+    @DeleteMapping("/delete")
     public ResponseEntity<UserResponseDTO> deleteUser(@Email @PathVariable String email) {
         UserResponseDTO userResponseDTO = userService.softDeleteUser(email);
         return ResponseEntity.ok().body(userResponseDTO);

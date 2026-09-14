@@ -1,10 +1,12 @@
 package com.example.doc_intel.DTO;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class TextSegmentResponseDTO {
@@ -18,4 +20,8 @@ public class TextSegmentResponseDTO {
     private String score;
 
     private String text;
+
+    private Integer version;
+
+    private String userId;
 }

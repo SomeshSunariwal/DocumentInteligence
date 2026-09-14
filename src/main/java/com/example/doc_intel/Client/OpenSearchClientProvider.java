@@ -12,14 +12,12 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 @Component
 @Slf4j
-@Lazy
 public class OpenSearchClientProvider implements Client<OpenSearchClient> {
 
     private final OpenSearchClient openSearchClient;
@@ -47,6 +45,7 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
                         .setDefaultCredentialsProvider(credentialsProvider))
             .build();
 
+        log.info("OpenSearch Client initialized");
         this.openSearchClient = new OpenSearchClient(transport);
     }
 
