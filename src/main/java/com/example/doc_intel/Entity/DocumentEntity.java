@@ -1,5 +1,6 @@
 package com.example.doc_intel.Entity;
 
+import com.example.doc_intel.Enums.DocumentStatus;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +71,10 @@ public class DocumentEntity {
     private Integer version;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false)
+    @JoinColumn(name = "user_email", referencedColumnName = "user_email", nullable = false)
     private UserEntity user;
+
+    @NonNull
+    @Column(nullable = false)
+    private DocumentStatus status;
 }

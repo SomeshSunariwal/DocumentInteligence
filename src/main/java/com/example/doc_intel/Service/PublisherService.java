@@ -1,6 +1,6 @@
 package com.example.doc_intel.Service;
 
-import com.example.doc_intel.DTO.DocumentUploadResponseDTO;
+import com.example.doc_intel.DTO.DocumentsDTO.DocumentUploadResponseDTO;
 import com.example.doc_intel.DTO.FileRequestDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.Kafka.KafkaProducer;

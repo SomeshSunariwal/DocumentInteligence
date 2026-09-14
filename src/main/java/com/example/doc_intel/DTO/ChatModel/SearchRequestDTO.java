@@ -1,4 +1,4 @@
-package com.example.doc_intel.DTO;
+package com.example.doc_intel.DTO.ChatModel;
 
 
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +7,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class QuestionRequestDTO {
+public class SearchRequestDTO {
+
     @NotBlank
-    String question;
+    String searchTerm;
+
 }

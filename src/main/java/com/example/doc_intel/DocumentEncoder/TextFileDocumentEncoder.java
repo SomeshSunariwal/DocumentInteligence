@@ -4,6 +4,7 @@ import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.Exceptions.FileReadError;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,14 +20,15 @@ import java.util.List;
 public class TextFileDocumentEncoder implements DocumentEncoder {
 
     @Override
-    public List<TextSegment> encode(MultipartFile file) {
+    public List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
+                                    @NonNull final Integer version) {
         log.info("Using Text File Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(
-                            file.getInputStream(),
-                            StandardCharsets.UTF_8))) {
+                new InputStreamReader(
+                    file.getInputStream(),
+                    StandardCharsets.UTF_8))) {
 
                 String fileName = file.getOriginalFilename();
                 String line;
@@ -40,9 +42,10 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                     metadata.put(Constants.META_DATA_FILE_NAME, fileName);
                     metadata.put(Constants.META_DATA_LINE_NUMBER, lineNumber);
                     metadata.put(Constants.META_DATA_PAGE_NUMBER, 0);
-                    metadata.put(Constants.META_DATA_TEXT, line);
+                    metadata.put(Constants.META_USER_ID, userId);
+                    metadata.put(Constants.META_DOCUMENT_VERSION, version);
                     TextSegment segment =
-                            TextSegment.from(line, metadata);
+                        TextSegment.from(line, metadata);
 
                     segments.add(segment);
                     lineNumber++;

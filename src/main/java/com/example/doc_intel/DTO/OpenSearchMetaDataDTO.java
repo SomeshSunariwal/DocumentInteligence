@@ -15,5 +15,7 @@ public class OpenSearchMetaDataDTO {
 
     private Integer lineNumber;
 
-    private String text;
+    private String userId;
+
+    private Integer version;
 }

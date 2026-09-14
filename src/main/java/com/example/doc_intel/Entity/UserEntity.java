@@ -11,7 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,9 +23,7 @@ import lombok.NonNull;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users",
-        uniqueConstraints = {
-            @UniqueConstraint(name = "uk_users_email", columnNames = "email")})
+@Table(name = "users")
 public class UserEntity {
 
     @Id
@@ -34,7 +31,7 @@ public class UserEntity {
     private Integer id;
 
     @NotNull
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(nullable = false, unique = true)
     private UUID userId;
 
     @NotBlank
@@ -50,8 +47,12 @@ public class UserEntity {
     private String lastName;
 
     @NotBlank
-    @Column(unique = true, nullable = false)
+    @Column(name = "user_email", unique = true, nullable = false)
     private String email;
+
+    @NotBlank
+    @Column(unique = true, nullable = false)
+    private String passphrase;
 
     @NonNull
     @Column(nullable = false)

@@ -1,5 +1,6 @@
 package com.example.doc_intel.LongChainChatModel;
 
+import com.example.doc_intel.Enums.ChatModelType;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,10 +20,10 @@ public class ChatModelFactory {
         this.longChainLocalAIModel = longChainLocalAIModel;
     }
 
-    public LongChainChatModel giveMeChatModel(String name) {
-        if (name.equals("ollamaChatModel")) {
+    public LongChainChatModel giveMeChatModel(ChatModelType type) {
+        if (ChatModelType.OLLAMA.equals(type)) {
             return longChainOllamaChatModel;
-        } else if (name.equals("openAIChatModel")) {
+        } else if (ChatModelType.OPENAI.equals(type)) {
             return longChainOpenAIChatModel;
         }
         return longChainLocalAIModel;

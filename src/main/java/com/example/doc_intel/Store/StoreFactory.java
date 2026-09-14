@@ -1,8 +1,7 @@
 package com.example.doc_intel.Store;
 
+import com.example.doc_intel.Enums.StoreType;
 import org.springframework.stereotype.Component;
-
-import java.util.Objects;
 
 @Component
 public class StoreFactory {
@@ -16,10 +15,10 @@ public class StoreFactory {
         this.openSearchStore = openSearchStore;
     }
 
-    public Store giveMeStore (String name) {
-        if (Objects.equals(name, "openSearch")) {
+    public Store giveMeStore (StoreType storeType) {
+        if (StoreType.OPEN_STORE.equals(storeType)) {
             return openSearchStore;
-        } else if (Objects.equals(name, "inMemory")) {
+        } else if (StoreType.IN_MEMORY.equals(storeType)) {
             return inMemoryStore;
         }
         return inMemoryStore;

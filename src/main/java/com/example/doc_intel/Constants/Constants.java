@@ -10,9 +10,17 @@ public class Constants {
 
     public static final String META_DATA_TEXT = "text";
 
+    public static final String META_USER_ID = "userId";
+
+    public static final String META_DOCUMENT_VERSION = "version";
+
     public static final String OPEN_SEARCH_INDEX_NAME = "pdf-documents";  // Open Search index
 
     public static final String DOCUMENT_EVENT = "document-events";
 
     public static final String MINIO_BUCKET_NAME = "documents";
+
+    public static final String EMAIL = "email";
+
+    public static final String ID = "id";
 }
