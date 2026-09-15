@@ -14,7 +14,7 @@ import com.example.doc_intel.Exceptions.MessageLengthException;
 import com.example.doc_intel.Exceptions.NullMessageException;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
-import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
+import com.example.doc_intel.ChatModels.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Store.StoreFactory;

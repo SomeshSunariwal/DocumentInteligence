@@ -1,9 +1,6 @@
 package com.example.doc_intel.Kafka;
 
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-
-import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -21,4 +18,5 @@ public class KafkaConsumer {
         log.info("Event ID: {}", event.getId());
         log.info("Message: {}", event.getMessage());
     }
+
 }

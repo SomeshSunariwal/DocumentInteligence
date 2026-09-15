@@ -1,4 +1,4 @@
-package com.example.doc_intel.LongChainChatModel;
+package com.example.doc_intel.ChatModels.LongChainChatModel;
 
 import com.example.doc_intel.Enums.ChatModelType;
 import org.springframework.stereotype.Component;

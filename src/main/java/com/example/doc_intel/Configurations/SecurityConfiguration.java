@@ -27,23 +27,23 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
 
         http.sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                // Public APIs
-                .requestMatchers(
-                    "/api/auth/login",
-                    "/api/users/register",
-                    "/error"
-                ).permitAll()
-                // Everything else requires authentication
-                .anyRequest().authenticated()
-            )
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // Public APIs
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/users/register",
+                                "/error"
+                        ).permitAll()
+                        // Everything else requires authentication
+                        .anyRequest().authenticated()
+                )
 
-            // Spring Security handles Bearer JWT
-            .oauth2ResourceServer(oauth2 ->
-                oauth2.jwt(jwt -> {
-                }));
+                // Spring Security handles Bearer JWT
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(jwt -> {
+                        }));
 
         return http.build();
     }
@@ -61,6 +61,7 @@ public class SecurityConfiguration {
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        ;
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 }
