@@ -10,10 +10,8 @@ import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.DocumentStatus;
 import com.example.doc_intel.Enums.FileExtensions;
 import com.example.doc_intel.Enums.StoreType;
-import com.example.doc_intel.Exceptions.DocumentNotExistException;
-import com.example.doc_intel.Exceptions.ProcessFileException;
-import com.example.doc_intel.Exceptions.UnSupportedFileException;
-import com.example.doc_intel.Exceptions.UserNotExistException;
+import com.example.doc_intel.Exceptions.*;
+import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.DocumentsRepository;
 import com.example.doc_intel.Repository.UserRepository;
@@ -29,6 +27,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -72,62 +71,19 @@ public class DocumentService {
     /**
      * Upload File to MinIO and Store Embedding in the Vector Store
      */
-    @Transactional
-    public DocumentResponseDTO uploadFile(@NonNull MultipartFile file) {
-        String email = Utils.getUserEmail();
-        FileExtensions fileExtension = Utils.getExtension(file);
-        if (Objects.isNull(fileExtension)) {
-            throw new UnSupportedFileException("File Type not support");
-        }
-
+    @Transactional(propagation = Propagation.REQUIRED)
+    public List<DocumentResponseDTO> uploadFile(@NonNull List<MultipartFile> files) {
         //---------------- User Check
+        String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Not Exist");
             throw new UserNotExistException("User not Exist");
         }
         UserEntity userEntity = optionalUserEntity.get();
-        String userName = userEntity.getUsername();
-
-        UUID uuid = UUID.randomUUID();
-        String objectKey = Utils.getObjectKey(userName, uuid, Objects.requireNonNull(file.getOriginalFilename()));
-
-        // Upload File to MinIO DataBase
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Created with : {}", objectWriteResponse.versionId());
-
-        //---------------------- Placed Document Object Into Table
-        DocumentEntity documentEntity = DocumentEntity.builder()
-            .documentId(uuid)
-            .fileName(Objects.requireNonNull(file.getOriginalFilename()))
-            .objectKey(objectKey)
-            .bucketName(Constants.MINIO_BUCKET_NAME)
-            .contentType(Objects.requireNonNull(file.getContentType()))
-            .fileSize(file.getSize())
-            .createdAt(LocalDateTime.now())
-            .createdBy(userName)
-            .updateAt(LocalDateTime.now())
-            .updatedBy(userName)
-            .isActive(true)
-            .version(1)
-            .status(DocumentStatus.UPLOADED)
-            .user(userEntity)
-            .build();
-
-        DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
-
-        //---------------------- Document Encoding and Storing Embedding
-        StoreEmbeddings(file, fileExtension, documentEntity);
-
-        return DocumentResponseDTO.builder()
-            .version(documentEntityResponse.getVersion())
-            .URI(null)
-            .documentId(documentEntityResponse.getDocumentId())
-            .fileName(file.getOriginalFilename())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .build();
+        return files.stream()
+            .map(file -> processDocument(userEntity, file))
+            .toList();
     }
 
     /**
@@ -155,18 +111,24 @@ public class DocumentService {
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
         }
 
+        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
+            file.getOriginalFilename();
+        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
+
+        // ---------------------- Document Encoding and Storing Embedding
+        Integer chunks = StoreEmbeddings(file, fileExtension, optionalUserEntity.get().getUserId().toString(),
+            documentEntity.getVersion() + 1, documentId.toString());
+
         // Updated Document in the Table
         String objectKey = documentEntity.getObjectKey();
-        documentEntity.setFileName(Objects.requireNonNull(file.getOriginalFilename()));
+        documentEntity.setFileName(fileName);
         documentEntity.setFileSize(file.getSize());
-        documentEntity.setContentType(Objects.requireNonNull(file.getContentType()));
+        documentEntity.setContentType(contentType);
         documentEntity.setUpdateAt(LocalDateTime.now());
         documentEntity.setUpdatedBy(email);
         documentEntity.setStatus(DocumentStatus.UPLOADED);
         documentEntity.setVersion(documentEntity.getVersion() + 1);
-
-        // ---------------------- Document Encoding and Storing Embedding
-        StoreEmbeddings(file, fileExtension, documentEntity);
+        documentEntity.setChunks(chunks);
 
         // Upload File to MinIO
         ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
@@ -177,6 +139,7 @@ public class DocumentService {
             .URI(null)
             .documentId(documentEntity.getDocumentId())
             .fileName(file.getOriginalFilename())
+            .chunks(documentEntity.getChunks())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .status(documentEntity.getStatus())
@@ -210,6 +173,7 @@ public class DocumentService {
             .version(documentEntity.getVersion())
             .URI(null)
             .documentId(documentEntity.getDocumentId())
+            .chunks(documentEntity.getChunks())
             .fileName(documentEntity.getFileName())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
@@ -248,6 +212,7 @@ public class DocumentService {
                     .createdAt(document.getCreatedAt())
                     .updatedAt(document.getUpdateAt())
                     .status(document.getStatus())
+                    .chunks(document.getChunks())
                     .build();
             }).toList();
 
@@ -265,14 +230,13 @@ public class DocumentService {
     /**
      * Store Embeddings in the Vector Store
      */
-    private void StoreEmbeddings(@NonNull MultipartFile file, @NonNull FileExtensions fileExtension,
-                                 @NonNull DocumentEntity documentEntity) {
+    private Integer StoreEmbeddings(@NonNull MultipartFile file, @NonNull FileExtensions fileExtension,
+                                    @NonNull String userId, @NonNull Integer version, @NonNull String documentId) {
         documentEncoder = documentEncoderFactory.getParser(fileExtension);
         List<TextSegment> chunks;
 
         try {
-            chunks = documentEncoder.encode(file, documentEntity.getUser().getUserId()
-                .toString(), documentEntity.getVersion());
+            chunks = documentEncoder.encode(file, userId, version, documentId);
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
         }
@@ -282,5 +246,95 @@ public class DocumentService {
             Embedding embedding = embeddingModel.embed(chunk).content();
             embeddingStore.add(embedding, chunk);
         }
+        return chunks.size();
+    }
+
+    /**
+     * Get Document of the User with DocumentId
+     */
+    @Transactional
+    public DocumentResponseDTO getDocument(@NonNull UUID documentId) {
+        String email = Utils.getUserEmail();
+        // User Check
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
+            log.info("User Email: {} not exist", email);
+            throw new UserNotExistException("User not Exist");
+        }
+
+        // Documen Check
+        UserEntity userEntity = optionalUserEntity.get();
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentId(documentId);
+        if (optionalDocumentEntity.isEmpty()) {
+            log.info("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found");
+        }
+
+        DocumentEntity documentEntity = optionalDocumentEntity.get();
+        String url = minIOProcessor.getPresignedObjectUrl(documentEntity.getObjectKey());
+        return DocumentResponseDTO.builder()
+            .fileName(documentEntity.getFileName())
+            .documentId(documentEntity.getDocumentId())
+            .URI(url)
+            .version(documentEntity.getVersion())
+            .createdAt(documentEntity.getCreatedAt())
+            .updatedAt(documentEntity.getUpdateAt())
+            .status(documentEntity.getStatus())
+            .chunks(documentEntity.getChunks())
+            .build();
+    }
+
+    private DocumentResponseDTO processDocument(@NonNull UserEntity userEntity, @NonNull MultipartFile file) {
+        FileExtensions fileExtension = Utils.getExtension(file);
+        if (Objects.isNull(fileExtension)) {
+            throw new UnSupportedFileException("File Type not support");
+        }
+
+        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
+            file.getOriginalFilename();
+        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
+
+        UUID uuid = UUID.randomUUID();
+        String objectKey = Utils.getObjectKey(userEntity.getUsername(), uuid, fileName);
+
+        // Upload File to MinIO DataBase
+        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
+        log.info("Version Created with : {}", objectWriteResponse.versionId());
+
+        //---------------------- Document Encoding and Storing Embedding
+        Integer chunks = StoreEmbeddings(file, fileExtension, userEntity.getUserId().toString(), 1, uuid.toString());
+
+        //---------------------- Placed Document Object Into Table
+        DocumentEntity documentEntity = DocumentEntity.builder()
+            .documentId(uuid)
+            .fileName(file.getOriginalFilename())
+            .objectKey(objectKey)
+            .bucketName(Constants.MINIO_BUCKET_NAME)
+            .contentType(contentType)
+            .fileSize(file.getSize())
+            .isActive(true)
+            .version(1)
+            .status(DocumentStatus.UPLOADED)
+            .user(userEntity)
+            .createdAt(LocalDateTime.now())
+            .createdBy(userEntity.getUsername())
+            .updateAt(LocalDateTime.now())
+            .updatedBy(userEntity.getUsername())
+            .chunks(chunks)
+            .build();
+
+        //  Update Document Entity with Number of Chunks
+        DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
+
+        return DocumentResponseDTO.builder()
+            .version(documentEntityResponse.getVersion())
+            .URI(null)
+            .documentId(documentEntityResponse.getDocumentId())
+            .fileName(file.getOriginalFilename())
+            .chunks(documentEntityResponse.getChunks())
+            .createdAt(documentEntity.getCreatedAt())
+            .updatedAt(documentEntity.getUpdateAt())
+            .status(documentEntity.getStatus())
+            .build();
     }
 }

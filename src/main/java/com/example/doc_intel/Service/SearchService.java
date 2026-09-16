@@ -14,7 +14,7 @@ import com.example.doc_intel.Exceptions.MessageLengthException;
 import com.example.doc_intel.Exceptions.NullMessageException;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
-import com.example.doc_intel.LongChainChatModel.ChatModelFactory;
+import com.example.doc_intel.ChatModels.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Store.StoreFactory;
@@ -29,11 +29,13 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -67,8 +69,9 @@ public class SearchService {
         this.userRepository = userRepository;
     }
 
-    public SearchResponseDTO processSearch(final SearchRequestDTO searchRequestDTO) {
+    public SearchResponseDTO processSearch(@Nullable String documentId, final SearchRequestDTO searchRequestDTO) {
         String email = Utils.getUserEmail();
+        log.info("Processing search request for documentId={}, email={}", documentId, email);
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
             throw new UserNotExistException("User Not Exist");
@@ -87,13 +90,17 @@ public class SearchService {
 
         // 2. Convert question into embedding
         Embedding queryEmbedding = embeddingModel.embed(message).content();
-
+        // Created Search Filter
+        Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
+        if (Objects.nonNull(documentId)) {
+            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId));
+        }
         // 3. Search OpenSearch
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
             .queryEmbedding(queryEmbedding)
             .maxResults(5)
             .minScore(0.5)
-            .filter(metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId().toString()))
+            .filter(filter)
             .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
@@ -113,6 +120,7 @@ public class SearchService {
             double score = match.score() * 100;
             Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
             String userId = metadata.getString(Constants.META_USER_ID);
+            String docId = metadata.getString(Constants.META_DOCUMENT_ID);
             textSegmentResponseDTO.add(
                 TextSegmentResponseDTO.builder()
                     .fileName(fileName)
@@ -121,6 +129,7 @@ public class SearchService {
                     .text(text)
                     .version(version)
                     .userId(userId)
+                    .documentId(docId)
                     .score(String.format("%.2f%%", score))
                     .build());
         });
@@ -138,7 +147,7 @@ public class SearchService {
 
     }
 
-    public AISearchResponseDTO processAISearch(final SearchRequestDTO searchRequestDTO) {
+    public AISearchResponseDTO processAISearch(@Nullable String documentId, final SearchRequestDTO searchRequestDTO) {
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
@@ -160,12 +169,18 @@ public class SearchService {
         // 2. Convert question into embedding
         Embedding queryEmbedding = embeddingModel.embed(message).content();
 
+        // Created Search Filter
+        Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
+        if (Objects.nonNull(documentId)) {
+            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId));
+        }
+
         // 3. Search OpenSearch
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
             .queryEmbedding(queryEmbedding)
             .maxResults(5)
             .minScore(0.5)
-            .filter(metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId()))
+            .filter(filter)
             .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
@@ -182,6 +197,7 @@ public class SearchService {
                 String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
                 Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
                 Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
+                String docId = metadata.getString(Constants.META_DOCUMENT_ID);
                 String text = segment.text();
                 double score = match.score() * 100;
                 Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
@@ -192,6 +208,7 @@ public class SearchService {
                         .lineNumber(lineNumber)
                         .text(text)
                         .version(version)
+                        .documentId(docId)
                         .score(String.format("%.2f%%", score))
                         .build());
                 return match.embedded().text();

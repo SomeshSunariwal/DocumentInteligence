@@ -1,6 +1,7 @@
 package com.example.doc_intel.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,4 +17,6 @@ public interface DocumentsRepository extends JpaRepository<DocumentEntity, UUID>
     DocumentEntity findByDocumentIdAndIsActiveTrue(@NonNull UUID documentId);
 
     List<DocumentEntity> findByUser_EmailAndIsActiveTrue(@NonNull String email);
+
+    Optional<DocumentEntity> findByDocumentId(@NonNull UUID documentId);
 }

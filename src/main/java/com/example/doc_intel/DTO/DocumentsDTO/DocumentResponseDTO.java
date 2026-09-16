@@ -28,6 +28,9 @@ public class DocumentResponseDTO {
     private Integer version;
 
     @NonNull
+    private Integer chunks;
+
+    @NonNull
     private LocalDateTime createdAt;
 
     @NonNull

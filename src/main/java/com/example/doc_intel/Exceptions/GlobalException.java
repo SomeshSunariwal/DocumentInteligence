@@ -3,6 +3,7 @@ package com.example.doc_intel.Exceptions;
 import com.example.doc_intel.DTO.ExceptionDTO;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOBucketCreationException;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
 import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;

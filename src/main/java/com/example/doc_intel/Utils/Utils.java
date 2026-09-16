@@ -31,6 +31,7 @@ public class Utils {
         metadata.put(Constants.META_DATA_PAGE_NUMBER, openSearchMetaDataDTO.getPageNumber());
         metadata.put(Constants.META_USER_ID, openSearchMetaDataDTO.getUserId());
         metadata.put(Constants.META_DOCUMENT_VERSION, openSearchMetaDataDTO.getVersion());
+        metadata.put(Constants.META_DOCUMENT_ID, openSearchMetaDataDTO.getDocumentId());
         return metadata;
     }
 

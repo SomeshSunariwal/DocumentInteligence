@@ -21,7 +21,7 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
 
     @Override
     public List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
-                                    @NonNull final Integer version) {
+                                    @NonNull final Integer version, @NonNull final String documentId) {
         log.info("Using Text File Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
@@ -44,6 +44,7 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                     metadata.put(Constants.META_DATA_PAGE_NUMBER, 0);
                     metadata.put(Constants.META_USER_ID, userId);
                     metadata.put(Constants.META_DOCUMENT_VERSION, version);
+                    metadata.put(Constants.META_DOCUMENT_ID, documentId);
                     TextSegment segment =
                         TextSegment.from(line, metadata);
 
