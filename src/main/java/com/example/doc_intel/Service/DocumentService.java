@@ -89,8 +89,12 @@ public class DocumentService {
         UserEntity userEntity = optionalUserEntity.get();
         String userName = userEntity.getUsername();
 
+        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
+            file.getOriginalFilename();
+        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
+
         UUID uuid = UUID.randomUUID();
-        String objectKey = Utils.getObjectKey(userName, uuid, Objects.requireNonNull(file.getOriginalFilename()));
+        String objectKey = Utils.getObjectKey(userName, uuid, fileName);
 
         // Upload File to MinIO DataBase
         ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
@@ -99,10 +103,10 @@ public class DocumentService {
         //---------------------- Placed Document Object Into Table
         DocumentEntity documentEntity = DocumentEntity.builder()
             .documentId(uuid)
-            .fileName(Objects.requireNonNull(file.getOriginalFilename()))
+            .fileName(file.getOriginalFilename())
             .objectKey(objectKey)
             .bucketName(Constants.MINIO_BUCKET_NAME)
-            .contentType(Objects.requireNonNull(file.getContentType()))
+            .contentType(contentType)
             .fileSize(file.getSize())
             .createdAt(LocalDateTime.now())
             .createdBy(userName)

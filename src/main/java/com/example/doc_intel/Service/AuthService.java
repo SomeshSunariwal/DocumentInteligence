@@ -31,5 +31,4 @@ public class AuthService {
             .email(request.getUsername())
             .token(token).build();
     }
-
 }

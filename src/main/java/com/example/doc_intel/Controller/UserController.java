@@ -4,6 +4,8 @@ import com.example.doc_intel.DTO.UserDTOs.DeleteUserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
 import com.example.doc_intel.Service.UserService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * Controller class for handling user-related API endpoints.
  */
+@Tag(
+        name = "User Controller",
+        description = "These APIs used to perform user related operations"
+)
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -39,6 +45,7 @@ public class UserController {
     /**
      * This function delete the user from the table.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping
     public ResponseEntity<UserResponseDTO> deleteUser(@Valid @RequestBody DeleteUserRequestDTO deleteUserRequestDTO) {
         UserResponseDTO userResponseDTO = userService.deleteUser(deleteUserRequestDTO);
@@ -49,6 +56,7 @@ public class UserController {
      * This function soft delete the user from the table.
      * it will make the user inactive.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/delete")
     public ResponseEntity<UserResponseDTO> deleteUser(@Email @PathVariable String email) {
         UserResponseDTO userResponseDTO = userService.softDeleteUser(email);

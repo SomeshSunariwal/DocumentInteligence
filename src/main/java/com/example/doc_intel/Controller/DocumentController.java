@@ -3,6 +3,8 @@ package com.example.doc_intel.Controller;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
 import com.example.doc_intel.Service.DocumentService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +25,15 @@ import java.util.UUID;
 /**
  * Controller class for handling document-related API endpoints.
  */
+@Tag(
+        name = "Document Controller",
+        description = "These APIs used to perform document related operations"
+)
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
+@SecurityRequirement(name = "bearerAuth")
 public class DocumentController {
 
     private final DocumentService documentService;

@@ -30,3 +30,6 @@
 2. curl -X POST http://localhost:8080/api/document -F "file=@DocIntel.pdf"
 3. curl -X POST http://localhost:8080/api/document -F "file=@test.pdf"
 4. curl -s "http://localhost:9200/pdf-documents/_mapping?pretty"  : Check Vetcor Mapping. Its Should be KNN
+
+### Swagger APIs
+1. Start the application and run : http://localhost:8080/swagger-ui/index.html
