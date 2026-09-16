@@ -26,8 +26,7 @@ public class ChatService {
 
     public ResponseBodyEmitter chat(@NonNull String question) {
         String email = Utils.getUserEmail();
-        Optional<AIConfig> aiConfigOptional =
-            aiConfigRepository.findByUser_Email(email);
+        Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
 
         if (aiConfigOptional.isEmpty()) {
             throw new UnAuthenticatedUser("No Config Found");
