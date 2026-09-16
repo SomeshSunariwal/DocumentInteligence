@@ -2,30 +2,22 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
+import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
-import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
-import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
 import com.example.doc_intel.Entity.DocumentEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.DocumentStatus;
 import com.example.doc_intel.Enums.FileExtensions;
-import com.example.doc_intel.Enums.StoreType;
-import com.example.doc_intel.Exceptions.*;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
+import com.example.doc_intel.Exceptions.UnSupportedFileException;
+import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.DocumentsRepository;
 import com.example.doc_intel.Repository.UserRepository;
-import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.Utils.Utils;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.minio.ObjectWriteResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,25 +39,16 @@ public class DocumentService {
 
     private final DocumentsRepository documentsRepository;
 
-    private final EmbeddingStore<TextSegment> embeddingStore;
+    private final PublisherService publisherService;
 
-    private final DocumentEncoderFactory documentEncoderFactory;
-
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
-
-    private DocumentEncoder documentEncoder;
-
-    DocumentService(@Value("${vector.data.store}") final StoreType storeType,
-                    MinIOProcessor minIOProcessor,
+    DocumentService(MinIOProcessor minIOProcessor,
                     UserRepository userRepository,
                     DocumentsRepository documentsRepository,
-                    StoreFactory storeFactory,
-                    DocumentEncoderFactory documentEncoderFactory) {
+                    PublisherService publisherService) {
         this.minIOProcessor = minIOProcessor;
         this.userRepository = userRepository;
         this.documentsRepository = documentsRepository;
-        this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
-        this.documentEncoderFactory = documentEncoderFactory;
+        this.publisherService = publisherService;
     }
 
     /**
@@ -103,6 +86,7 @@ public class DocumentService {
             log.info("User Email: {} not exist", email);
             throw new UserNotExistException("User not Exist");
         }
+        UserEntity userEntity = optionalUserEntity.get();
 
         // Documen Check
         DocumentEntity documentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
@@ -115,12 +99,14 @@ public class DocumentService {
             file.getOriginalFilename();
         String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
 
-        // ---------------------- Document Encoding and Storing Embedding
-        Integer chunks = StoreEmbeddings(file, fileExtension, optionalUserEntity.get().getUserId().toString(),
-            documentEntity.getVersion() + 1, documentId.toString());
-
         // Updated Document in the Table
         String objectKey = documentEntity.getObjectKey();
+
+        // Upload File to MinIO
+        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
+        log.info("Version Updated to : {}", objectWriteResponse.versionId());
+
+        // Updated Document in the Table
         documentEntity.setFileName(fileName);
         documentEntity.setFileSize(file.getSize());
         documentEntity.setContentType(contentType);
@@ -128,11 +114,23 @@ public class DocumentService {
         documentEntity.setUpdatedBy(email);
         documentEntity.setStatus(DocumentStatus.UPLOADED);
         documentEntity.setVersion(documentEntity.getVersion() + 1);
-        documentEntity.setChunks(chunks);
+        documentEntity.setChunks(0);
+        documentEntity.setFileExtensions(fileExtension);
+        documentEntity.setMinIOVersionId(objectWriteResponse.versionId());
 
-        // Upload File to MinIO
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Updated to : {}", objectWriteResponse.versionId());
+        // Create Kafka Event
+        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
+            .eventId(UUID.randomUUID())
+            .documentId(documentId)
+            .userId(userEntity.getUserId())
+            .objectKey(objectKey)
+            .fileName(documentEntity.getFileName())
+            .version(documentEntity.getVersion())
+            .versionId(objectWriteResponse.versionId())
+            .build();
+
+        // Publish Document Event
+        publisherService.publishDocument(kafkaEventDTO);
 
         return DocumentResponseDTO.builder()
             .version(documentEntity.getVersion())
@@ -228,28 +226,6 @@ public class DocumentService {
     }
 
     /**
-     * Store Embeddings in the Vector Store
-     */
-    private Integer StoreEmbeddings(@NonNull MultipartFile file, @NonNull FileExtensions fileExtension,
-                                    @NonNull String userId, @NonNull Integer version, @NonNull String documentId) {
-        documentEncoder = documentEncoderFactory.getParser(fileExtension);
-        List<TextSegment> chunks;
-
-        try {
-            chunks = documentEncoder.encode(file, userId, version, documentId);
-        } catch (Exception e) {
-            throw new ProcessFileException("Internal Server Error");
-        }
-
-        log.info("Number of chunks: {}", chunks.size());
-        for (TextSegment chunk : chunks) {
-            Embedding embedding = embeddingModel.embed(chunk).content();
-            embeddingStore.add(embedding, chunk);
-        }
-        return chunks.size();
-    }
-
-    /**
      * Get Document of the User with DocumentId
      */
     @Transactional
@@ -301,8 +277,6 @@ public class DocumentService {
         ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
         log.info("Version Created with : {}", objectWriteResponse.versionId());
 
-        //---------------------- Document Encoding and Storing Embedding
-        Integer chunks = StoreEmbeddings(file, fileExtension, userEntity.getUserId().toString(), 1, uuid.toString());
 
         //---------------------- Placed Document Object Into Table
         DocumentEntity documentEntity = DocumentEntity.builder()
@@ -312,19 +286,35 @@ public class DocumentService {
             .bucketName(Constants.MINIO_BUCKET_NAME)
             .contentType(contentType)
             .fileSize(file.getSize())
+            .fileExtensions(fileExtension)
             .isActive(true)
             .version(1)
+            .minIOVersionId(objectWriteResponse.versionId())
             .status(DocumentStatus.UPLOADED)
             .user(userEntity)
             .createdAt(LocalDateTime.now())
             .createdBy(userEntity.getUsername())
             .updateAt(LocalDateTime.now())
             .updatedBy(userEntity.getUsername())
-            .chunks(chunks)
+            .chunks(0)
             .build();
 
         //  Update Document Entity with Number of Chunks
         DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
+
+        // Create Kafka Event
+        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
+            .eventId(uuid)
+            .documentId(uuid)
+            .userId(userEntity.getUserId())
+            .objectKey(objectKey)
+            .fileName(documentEntity.getFileName())
+            .version(documentEntity.getVersion())
+            .versionId(objectWriteResponse.versionId())
+            .build();
+
+        // Publish Document Event
+        publisherService.publishDocument(kafkaEventDTO);
 
         return DocumentResponseDTO.builder()
             .version(documentEntityResponse.getVersion())

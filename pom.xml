@@ -193,6 +193,7 @@
 
     </dependencies>
 
+
     <build>
         <plugins>
             <plugin>
@@ -221,6 +222,18 @@
                     <failOnViolation>true</failOnViolation>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+
+                <configuration>
+                    <argLine>
+                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
+                    </argLine>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 
