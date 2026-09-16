@@ -15,7 +15,7 @@ public class KafkaProducer {
         this.template = template;
     }
 
-    public <T> void publish(KafkaEventDTO<T> event) {
+    public void publish(KafkaEventDTO event) {
         template.send(Constants.DOCUMENT_EVENT, event);
     }
 }

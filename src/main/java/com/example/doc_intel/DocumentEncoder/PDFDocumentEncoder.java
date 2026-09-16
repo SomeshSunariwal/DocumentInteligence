@@ -1,6 +1,7 @@
 package com.example.doc_intel.DocumentEncoder;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.DTO.EncoderModel;
 import com.example.doc_intel.Exceptions.FileReadError;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import dev.langchain4j.data.document.Metadata;
@@ -11,7 +12,6 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,13 +22,12 @@ import java.util.List;
 public class PDFDocumentEncoder implements DocumentEncoder {
 
     @Override
-    public List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
-                                    @NonNull final Integer version, @NonNull final String documentId) {
+    public List<TextSegment> encode(@NonNull final EncoderModel encoderModel) {
         log.info("Using PDF Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
-            String fileName = file.getOriginalFilename();
-            try (PDDocument pdf = Loader.loadPDF(file.getBytes())) {
+            String fileName = encoderModel.getFileName();
+            try (PDDocument pdf = Loader.loadPDF(encoderModel.getFileStream().readAllBytes())) {
 
                 for (int page = 0; page < pdf.getNumberOfPages(); page++) {
                     PDFTextStripper stripper = new PDFTextStripper();
@@ -46,9 +45,9 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                         metadata.put(Constants.META_DATA_FILE_NAME, fileName);
                         metadata.put(Constants.META_DATA_PAGE_NUMBER, page + 1);
                         metadata.put(Constants.META_DATA_LINE_NUMBER, line + 1);
-                        metadata.put(Constants.META_USER_ID, userId);
-                        metadata.put(Constants.META_DOCUMENT_VERSION, version);
-                        metadata.put(Constants.META_DOCUMENT_ID, documentId);
+                        metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
+                        metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentId());
+                        metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
                         TextSegment segment = TextSegment.from(text, metadata);
                         segments.add(segment);
                     }

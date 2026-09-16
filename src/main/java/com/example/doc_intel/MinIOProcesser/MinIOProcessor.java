@@ -5,11 +5,13 @@ import io.minio.ObjectWriteResponse;
 import lombok.NonNull;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Nullable;
+
 public interface MinIOProcessor {
 
     ObjectWriteResponse putObject(@NonNull MultipartFile file, @NonNull String objectKey);
 
-    GetObjectResponse getObject(@NonNull String objectKey);
+    GetObjectResponse getObject(@NonNull String objectKey, @Nullable String versionId);
 
     String getPresignedObjectUrl(@NonNull String objectKey);
 

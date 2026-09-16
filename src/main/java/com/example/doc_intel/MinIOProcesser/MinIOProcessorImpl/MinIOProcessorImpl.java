@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -43,12 +44,13 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     }
 
     @Override
-    public GetObjectResponse getObject(@NonNull String objectKey) {
+    public GetObjectResponse getObject(@NonNull String objectKey, @Nullable String versionId) {
         try {
             return minIOClientProvider.getClient().getObject(
                 GetObjectArgs.builder()
                     .bucket(Constants.MINIO_BUCKET_NAME)
                     .object(objectKey)
+                    .versionId(versionId)
                     .build()
             );
         } catch (Exception e) {

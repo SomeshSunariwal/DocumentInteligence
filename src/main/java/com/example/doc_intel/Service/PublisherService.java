@@ -1,26 +1,40 @@
 package com.example.doc_intel.Service;
 
-import com.example.doc_intel.DTO.DocumentsDTO.DocumentUploadResponseDTO;
-import com.example.doc_intel.DTO.FileRequestDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
+import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Enums.DocumentStatus;
+import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
 import com.example.doc_intel.Kafka.KafkaProducer;
+import com.example.doc_intel.Repository.DocumentsRepository;
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
+import java.util.Optional;
 
 @Service
+@AllArgsConstructor
 public class PublisherService {
 
     private final KafkaProducer kafkaProducer;
 
-    public PublisherService(@NonNull KafkaProducer kafkaProducer) {
-        this.kafkaProducer = kafkaProducer;
+    private final DocumentsRepository documentsRepository;
+
+    public void publishDocument(@NonNull KafkaEventDTO kafkaEventDTO) {
+        // Publish Event
+        kafkaProducer.publish(kafkaEventDTO);
+        updateDocumentStatus(kafkaEventDTO);
     }
 
-    public DocumentUploadResponseDTO publishDocument(@NonNull FileRequestDTO fileRequestDTO) {
-        // Publish Event
-        kafkaProducer.publish(new KafkaEventDTO<String[]>(UUID.randomUUID(), fileRequestDTO.getMessage()));
-        return new DocumentUploadResponseDTO(null, null);
+    private void  updateDocumentStatus(@NonNull KafkaEventDTO kafkaEventDTO) {
+        Optional<DocumentEntity> documentEntityOptional = documentsRepository.findByDocumentId(
+            kafkaEventDTO.getDocumentId());
+        // Certainly not possible but good to have
+        if (documentEntityOptional.isEmpty()) {
+            throw new DocumentNotExistException("Error While Document Processing");
+        }
+        DocumentEntity documentEntity = documentEntityOptional.get();
+        // Update Document Status
+        documentEntity.setStatus(DocumentStatus.PROCESSING);
     }
 }
