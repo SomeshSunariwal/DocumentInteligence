@@ -9,18 +9,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Nullable;
 
 
 /**
  * Controller class for handling search-related API endpoints.
  */
 @Tag(
-        name = "Search Controller",
-        description = "These APIs used to perform search in documents"
+    name = "Search Controller",
+    description = "These APIs used to perform search in documents"
 )
 @AllArgsConstructor
 @RestController
@@ -31,14 +30,17 @@ public class SearchController {
     private SearchService searchService;
 
     @PostMapping("/users/search")
-    public ResponseEntity<SearchResponseDTO> postSearch(@Valid @RequestBody SearchRequestDTO searchRequestDTO) {
-        SearchResponseDTO searchResponseDTO = searchService.processSearch(searchRequestDTO);
+    public ResponseEntity<SearchResponseDTO> postSearch(@RequestParam(name = "documentId") @Nullable String documentId,
+                                                        @Valid @RequestBody SearchRequestDTO searchRequestDTO) {
+        SearchResponseDTO searchResponseDTO = searchService.processSearch(documentId, searchRequestDTO);
         return ResponseEntity.ok().body(searchResponseDTO);
     }
 
     @PostMapping("/users/generate")
-    public ResponseEntity<AISearchResponseDTO> postAISearch(@Valid @RequestBody SearchRequestDTO searchRequestDTO) {
-        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(searchRequestDTO);
+    public ResponseEntity<AISearchResponseDTO> postAISearch(
+        @RequestParam(name = "documentId") @Nullable String documentId,
+        @Valid @RequestBody SearchRequestDTO searchRequestDTO) {
+        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(documentId, searchRequestDTO);
         return ResponseEntity.ok().body(searchResponseDTO);
     }
 }

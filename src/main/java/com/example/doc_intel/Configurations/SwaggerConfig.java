@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @OpenAPIDefinition(
     info = @Info(
-        title = "My API",
+        title = "Document Intelligence System",
         version = "1.0",
-        description = "My REST API"
+        description = "Collection of APIs"
     )
 )
 @SecurityScheme(

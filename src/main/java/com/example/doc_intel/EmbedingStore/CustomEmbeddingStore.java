@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.logical.And;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -158,6 +159,14 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .field("metadata." + equalTo.key() + ".keyword")
                     .value(FieldValue.of(equalTo.comparisonValue().toString()))
                 )
+                .build();
+        }
+
+        if (filter instanceof And and) {
+            Query leftQuery = buildFilterQuery(and.left());
+            Query rightQuery = buildFilterQuery(and.right());
+            return new Query.Builder()
+                .bool(b -> b.must(leftQuery, rightQuery))
                 .build();
         }
 

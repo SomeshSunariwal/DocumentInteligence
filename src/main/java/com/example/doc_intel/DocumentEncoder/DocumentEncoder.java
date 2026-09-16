@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface DocumentEncoder {
     List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
-                             @NonNull final Integer version);
+                             @NonNull final Integer version, @NonNull final String documentId);
 }

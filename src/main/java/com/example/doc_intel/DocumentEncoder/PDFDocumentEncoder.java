@@ -23,7 +23,7 @@ public class PDFDocumentEncoder implements DocumentEncoder {
 
     @Override
     public List<TextSegment> encode(@NonNull final MultipartFile file, @NonNull final String userId,
-                                    @NonNull final Integer version) {
+                                    @NonNull final Integer version, @NonNull final String documentId) {
         log.info("Using PDF Encoder");
         try {
             List<TextSegment> segments = new ArrayList<>();
@@ -48,6 +48,7 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                         metadata.put(Constants.META_DATA_LINE_NUMBER, line + 1);
                         metadata.put(Constants.META_USER_ID, userId);
                         metadata.put(Constants.META_DOCUMENT_VERSION, version);
+                        metadata.put(Constants.META_DOCUMENT_ID, documentId);
                         TextSegment segment = TextSegment.from(text, metadata);
                         segments.add(segment);
                     }

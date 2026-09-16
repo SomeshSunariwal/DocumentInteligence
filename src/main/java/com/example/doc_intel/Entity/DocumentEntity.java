@@ -68,6 +68,10 @@ public class DocumentEntity {
 
     @NonNull
     @Column(nullable = false)
+    private Integer chunks;
+
+    @NonNull
+    @Column(nullable = false)
     private Integer version;
 
     @ManyToOne(optional = false)

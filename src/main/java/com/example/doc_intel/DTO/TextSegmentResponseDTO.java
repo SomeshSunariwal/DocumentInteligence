@@ -24,4 +24,6 @@ public class TextSegmentResponseDTO {
     private Integer version;
 
     private String userId;
+
+    private String documentId;
 }

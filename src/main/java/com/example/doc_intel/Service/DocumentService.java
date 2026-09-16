@@ -100,6 +100,9 @@ public class DocumentService {
         ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
         log.info("Version Created with : {}", objectWriteResponse.versionId());
 
+        //---------------------- Document Encoding and Storing Embedding
+        Integer chunks = StoreEmbeddings(file, fileExtension, userEntity.getUserId().toString(), 1, uuid.toString());
+
         //---------------------- Placed Document Object Into Table
         DocumentEntity documentEntity = DocumentEntity.builder()
             .documentId(uuid)
@@ -108,26 +111,26 @@ public class DocumentService {
             .bucketName(Constants.MINIO_BUCKET_NAME)
             .contentType(contentType)
             .fileSize(file.getSize())
-            .createdAt(LocalDateTime.now())
-            .createdBy(userName)
-            .updateAt(LocalDateTime.now())
-            .updatedBy(userName)
             .isActive(true)
             .version(1)
             .status(DocumentStatus.UPLOADED)
             .user(userEntity)
+            .createdAt(LocalDateTime.now())
+            .createdBy(userName)
+            .updateAt(LocalDateTime.now())
+            .updatedBy(userName)
+            .chunks(chunks)
             .build();
 
+        //  Update Document Entity with Number of Chunks
         DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
-
-        //---------------------- Document Encoding and Storing Embedding
-        StoreEmbeddings(file, fileExtension, documentEntity);
 
         return DocumentResponseDTO.builder()
             .version(documentEntityResponse.getVersion())
             .URI(null)
             .documentId(documentEntityResponse.getDocumentId())
             .fileName(file.getOriginalFilename())
+            .chunks(documentEntityResponse.getChunks())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .status(documentEntity.getStatus())
@@ -159,18 +162,24 @@ public class DocumentService {
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
         }
 
+        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
+            file.getOriginalFilename();
+        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
+
+        // ---------------------- Document Encoding and Storing Embedding
+        Integer chunks = StoreEmbeddings(file, fileExtension, optionalUserEntity.get().getUserId().toString(),
+            documentEntity.getVersion() + 1, documentId.toString());
+
         // Updated Document in the Table
         String objectKey = documentEntity.getObjectKey();
-        documentEntity.setFileName(Objects.requireNonNull(file.getOriginalFilename()));
+        documentEntity.setFileName(fileName);
         documentEntity.setFileSize(file.getSize());
-        documentEntity.setContentType(Objects.requireNonNull(file.getContentType()));
+        documentEntity.setContentType(contentType);
         documentEntity.setUpdateAt(LocalDateTime.now());
         documentEntity.setUpdatedBy(email);
         documentEntity.setStatus(DocumentStatus.UPLOADED);
         documentEntity.setVersion(documentEntity.getVersion() + 1);
-
-        // ---------------------- Document Encoding and Storing Embedding
-        StoreEmbeddings(file, fileExtension, documentEntity);
+        documentEntity.setChunks(chunks);
 
         // Upload File to MinIO
         ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
@@ -181,6 +190,7 @@ public class DocumentService {
             .URI(null)
             .documentId(documentEntity.getDocumentId())
             .fileName(file.getOriginalFilename())
+            .chunks(documentEntity.getChunks())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .status(documentEntity.getStatus())
@@ -214,6 +224,7 @@ public class DocumentService {
             .version(documentEntity.getVersion())
             .URI(null)
             .documentId(documentEntity.getDocumentId())
+            .chunks(documentEntity.getChunks())
             .fileName(documentEntity.getFileName())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
@@ -252,6 +263,7 @@ public class DocumentService {
                     .createdAt(document.getCreatedAt())
                     .updatedAt(document.getUpdateAt())
                     .status(document.getStatus())
+                    .chunks(document.getChunks())
                     .build();
             }).toList();
 
@@ -269,14 +281,13 @@ public class DocumentService {
     /**
      * Store Embeddings in the Vector Store
      */
-    private void StoreEmbeddings(@NonNull MultipartFile file, @NonNull FileExtensions fileExtension,
-                                 @NonNull DocumentEntity documentEntity) {
+    private Integer StoreEmbeddings(@NonNull MultipartFile file, @NonNull FileExtensions fileExtension,
+                                    @NonNull String userId, @NonNull Integer version, @NonNull String documentId) {
         documentEncoder = documentEncoderFactory.getParser(fileExtension);
         List<TextSegment> chunks;
 
         try {
-            chunks = documentEncoder.encode(file, documentEntity.getUser().getUserId()
-                .toString(), documentEntity.getVersion());
+            chunks = documentEncoder.encode(file, userId, version, documentId);
         } catch (Exception e) {
             throw new ProcessFileException("Internal Server Error");
         }
@@ -286,5 +297,6 @@ public class DocumentService {
             Embedding embedding = embeddingModel.embed(chunk).content();
             embeddingStore.add(embedding, chunk);
         }
+        return chunks.size();
     }
 }

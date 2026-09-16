@@ -8,11 +8,11 @@ public class Constants {
 
     public static final String META_DATA_PAGE_NUMBER = "pageNumber";
 
-    public static final String META_DATA_TEXT = "text";
-
     public static final String META_USER_ID = "userId";
 
     public static final String META_DOCUMENT_VERSION = "version";
+
+    public static final String META_DOCUMENT_ID = "documentId";
 
     public static final String OPEN_SEARCH_INDEX_NAME = "pdf-documents";  // Open Search index
 
@@ -23,4 +23,5 @@ public class Constants {
     public static final String EMAIL = "email";
 
     public static final String ID = "id";
+
 }
