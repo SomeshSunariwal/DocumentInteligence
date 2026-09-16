@@ -4,6 +4,7 @@ import com.example.doc_intel.DTO.UserDTOs.DeleteUserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
 import com.example.doc_intel.Service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +46,10 @@ public class UserController {
     /**
      * This function delete the user from the table.
      */
+    @Operation(
+        summary = "Delete User",
+        description = "This will delete the user from DB"
+    )
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping
     public ResponseEntity<UserResponseDTO> deleteUser(@Valid @RequestBody DeleteUserRequestDTO deleteUserRequestDTO) {
@@ -56,6 +61,10 @@ public class UserController {
      * This function soft delete the user from the table.
      * it will make the user inactive.
      */
+    @Operation(
+        summary = "Soft Delete User",
+        description = "This will soft delete the user"
+    )
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/delete")
     public ResponseEntity<UserResponseDTO> deleteUser(@Email @PathVariable String email) {

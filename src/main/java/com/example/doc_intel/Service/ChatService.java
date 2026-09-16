@@ -12,7 +12,6 @@ import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -28,7 +27,7 @@ public class ChatService {
     public ResponseBodyEmitter chat(@NonNull String question) {
         String email = Utils.getUserEmail();
         Optional<AIConfig> aiConfigOptional =
-                aiConfigRepository.findByUser_Email(email);
+            aiConfigRepository.findByUser_Email(email);
 
         if (aiConfigOptional.isEmpty()) {
             throw new UnAuthenticatedUser("No Config Found");
@@ -37,30 +36,30 @@ public class ChatService {
         AIConfig aiConfig = aiConfigOptional.get();
 
         StreamingChatModel chatModel =
-                streamChatModelClient.giveMeModel(aiConfig);
+            streamChatModelClient.giveMeModel(aiConfig);
 
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(10 * 60 * 1000L);
 
         chatModel.chat(question, new StreamingChatResponseHandler() {
-                    @Override
-                    public void onPartialResponse(String partialResponse) {
-                        try {
-                            emitter.send(partialResponse);
-                        } catch (IOException e) {
-                            emitter.completeWithError(e);
-                        }
-                    }
-
-                    @Override
-                    public void onCompleteResponse(ChatResponse response) {
-                        emitter.complete();
-                    }
-
-                    @Override
-                    public void onError(Throwable error) {
-                        emitter.completeWithError(error);
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    try {
+                        emitter.send(partialResponse);
+                    } catch (IOException e) {
+                        emitter.completeWithError(e);
                     }
                 }
+
+                @Override
+                public void onCompleteResponse(ChatResponse response) {
+                    emitter.complete();
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    emitter.completeWithError(error);
+                }
+            }
         );
 
         return emitter;

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +27,12 @@ public class ConfigController {
 
     private final ConfigService configService;
 
+    /**
+     * This API is used to add/update AI configuration.
+     *
+     * @param aiConfigRequestDTO
+     * @return
+     */
     @Operation(
             summary = "Add or Update AI Configuration",
             description = "Allows users to configure AI settings"
@@ -33,8 +40,7 @@ public class ConfigController {
     @PostMapping("/config")
     public ResponseEntity<AIConfigResponseDTO> addOrUpdateConfig(
             @Valid @RequestBody AIConfigRequestDTO aiConfigRequestDTO) {
-
         AIConfigResponseDTO result = configService.addOrUpdateConfig(aiConfigRequestDTO);
-        return ResponseEntity.ok().body(result);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 }
