@@ -1,5 +1,65 @@
 # Application Name: Doc Inteligence System
 
+## High-Level Architecture
+
+```text
+                         ┌─────────────────────┐
+                         │ React + TypeScript  │
+                         │     Web Client      │
+                         └──────────┬──────────┘
+                                    │ HTTPS
+                                    ▼
+                         ┌─────────────────────┐
+                         │    Spring Boot API  │
+                         │                     │
+                         │ Auth                │
+                         │ Documents           │
+                         │ Search              │
+                         │                     │
+                         └───────┬───────┬─────┘
+                                 │       │
+                     ┌───────────┘       └────────────┐
+                     ▼                                ▼
+              ┌──────────────┐                 ┌──────────────┐
+              │ PostgreSQL   │                 │    MinIO     │
+              │              │                 │              │
+              │ Metadata     │                 │ Original     │
+              │ State        │                 │ Documents    │
+              │ Users        │                 │ Versions     │
+              │ Permissions  │                 └──────┬───────┘
+              │ Versions     │                        │
+              └──────────────┘                        │
+                                                     ▼
+                                              ┌──────────────┐
+                                              │    Kafka     │
+                                              │              │
+                                              │ Async Event  │
+                                              │ Backbone     │
+                                              └──────┬───────┘
+                                                     │
+                                                     │
+                                                     ▼                      
+                                              ┌─────────────┐       
+                                              │ OCR Worker  │       
+                                              │             │     
+                                              └─────────────┘      
+                                                    │                 
+                                                    │
+                                                    ▼
+                                             ┌──────────────┐
+                                             │  OpenSearch  │
+                                             │              │
+                                             │ Text Index   │
+                                             │ Vector Index │
+                                             └──────┬───────┘
+                                                    │
+                                                    ▼
+                                             Search / RAG
+                                                    │
+                                                    ▼
+                                             ┌──────────────┐
+                                             │  Local LLM   │
+                                             └──────────────┘
 
 ### OpenSearch Setup
 1. Download `Docker`
