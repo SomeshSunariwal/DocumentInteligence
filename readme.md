@@ -60,6 +60,7 @@
                                              ┌──────────────┐
                                              │  Local LLM   │
                                              └──────────────┘
+```
 
 ### OpenSearch Setup
 1. Download `Docker`
