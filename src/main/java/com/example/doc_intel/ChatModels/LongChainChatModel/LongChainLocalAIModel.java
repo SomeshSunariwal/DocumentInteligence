@@ -18,9 +18,7 @@ public class LongChainLocalAIModel implements LongChainChatModel {
         return LocalAiChatModel.builder()
                 .baseUrl(aiConfig.getBaseURL())
                 .modelName(aiConfig.getModelName())
-                .maxTokens(50)
-//                .logRequests(true)
-//                .logResponses(true)
+                .maxTokens(1000)
                 .build();
     }
 }

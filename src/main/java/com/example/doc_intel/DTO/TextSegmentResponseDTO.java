@@ -21,7 +21,7 @@ public class TextSegmentResponseDTO {
 
     private String text;
 
-    private Integer version;
+    private String version;
 
     private String userId;
 

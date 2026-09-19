@@ -17,7 +17,7 @@ public class OpenSearchMetaDataDTO {
 
     private String userId;
 
-    private Integer version;
+    private String version;
 
     private String documentId;
 }
