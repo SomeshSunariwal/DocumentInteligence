@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -183,7 +184,7 @@ public class ChatService {
 
     private void sendResponse(ResponseBodyEmitter emitter, ChatStreamResponse response) {
         try {
-            emitter.send(response);
+            emitter.send(SseEmitter.event().data(response).build());
         } catch (IOException e) {
             emitter.completeWithError(e);
         }

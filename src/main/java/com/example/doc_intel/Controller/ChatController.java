@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,8 +33,9 @@ public class ChatController {
 
     /**
      * This method is used to get the stream response of chat messages
+     *
      * @param documentId nullable
-     * @param query Non-Nullable
+     * @param query      Non-Nullable
      * @return @ResponseBodyEmitter
      */
     @Operation(
