@@ -31,11 +31,11 @@ public class PDFDocumentEncoder implements DocumentEncoder {
             try (PDDocument pdf = Loader.loadPDF(encoderModel.getFileStream().readAllBytes())) {
                 PDFTextStripper stripper = new PDFTextStripper();
 
-                final int chunkSize = 6;
-                final int overlap = 1;
-                final int step = chunkSize - overlap;
+                final int chunkSize = encoderModel.getLine();
+                final int overlap = encoderModel.getOverlapLine();
 
-                for (int page = 0; page < pdf.getNumberOfPages(); page++) {
+                final int step = chunkSize - overlap;
+                for (int page = 0, chunkIndex = 1; page < pdf.getNumberOfPages(); page++) {
                     int pageNumber = page + 1;
                     stripper.setStartPage(pageNumber);
                     stripper.setEndPage(pageNumber);
@@ -53,7 +53,7 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                         }
                     }
                     // Create chunks with 1-line overlap
-                    for (int start = 0; start < validLines.size(); start += step) {
+                    for (int start = 0 ; start < validLines.size(); start += step) {
 
                         int end = Math.min(start + chunkSize, validLines.size());
                         String chunk = String.join("\n", validLines.subList(start, end));
@@ -67,8 +67,9 @@ public class PDFDocumentEncoder implements DocumentEncoder {
                         metadata.put(Constants.META_DATA_PAGE_NUMBER, pageNumber);
                         metadata.put(Constants.META_DATA_LINE_NUMBER, start + 1);
                         metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
-                        metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentId());
+                        metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentVersion());
                         metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
+                        metadata.put(Constants.META_CHUNK_INDEX, chunkIndex++);
                         segments.add(TextSegment.from(chunk, metadata));
                     }
                 }

@@ -89,11 +89,12 @@ public class DocumentService {
         UserEntity userEntity = optionalUserEntity.get();
 
         // Documen Check
-        DocumentEntity documentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
-        if (Objects.isNull(documentEntity)) {
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
         }
+        DocumentEntity documentEntity = optionalDocumentEntity.get();
 
         String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
             file.getOriginalFilename();
@@ -125,8 +126,9 @@ public class DocumentService {
             .userId(userEntity.getUserId())
             .objectKey(objectKey)
             .fileName(documentEntity.getFileName())
-            .version(documentEntity.getVersion())
-            .versionId(objectWriteResponse.versionId())
+            .fileExtensions(fileExtension)
+            .documentVersion(documentEntity.getVersion())
+            .minIOVersion(objectWriteResponse.versionId())
             .build();
 
         // Publish Document Event
@@ -159,11 +161,13 @@ public class DocumentService {
         }
 
         // Document Check
-        DocumentEntity documentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
-        if (Objects.isNull(documentEntity)) {
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
         }
+        DocumentEntity documentEntity = optionalDocumentEntity.get();
+
         // Soft Deleting Document in the Table
         documentEntity.setIsActive(false);
         documentEntity.setStatus(DocumentStatus.DELETED);
@@ -241,9 +245,9 @@ public class DocumentService {
             throw new UserNotExistException("User not Exist");
         }
 
-        // Documen Check
+        // Document Check
         UserEntity userEntity = optionalUserEntity.get();
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentId(documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
             throw new DocumentNotExistException("No Documents Found");
@@ -313,8 +317,9 @@ public class DocumentService {
             .userId(userEntity.getUserId())
             .objectKey(objectKey)
             .fileName(documentEntity.getFileName())
-            .version(documentEntity.getVersion())
-            .versionId(objectWriteResponse.versionId())
+            .fileExtensions(fileExtension)
+            .documentVersion(documentEntity.getVersion())
+            .minIOVersion(objectWriteResponse.versionId())
             .build();
 
         // Publish Document Event

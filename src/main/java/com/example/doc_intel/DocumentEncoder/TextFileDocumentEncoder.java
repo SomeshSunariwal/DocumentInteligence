@@ -26,8 +26,8 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
         try {
             List<TextSegment> segments = new ArrayList<>();
 
-            final int chunkSize = 6;
-            final int overlap = 1;
+            final int chunkSize = encoderModel.getLine();
+            final int overlap = encoderModel.getOverlapLine();
             final int step = chunkSize - overlap;
             final int maxLinesPerPage = 25;
             final int maxCharsPerLine = 78;
@@ -38,7 +38,7 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                 List<String> pageLines = new ArrayList<>();
                 String line;
                 int pageNumber = 1;
-
+                Integer chunk = 1;
                 while ((line = reader.readLine()) != null) {
                     if (line.isBlank()) {
                         continue;
@@ -68,7 +68,8 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                         }
                         // 25 virtual lines = one page
                         if (pageLines.size() == maxLinesPerPage) {
-                            addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step);
+                            chunk = addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step,
+                                chunk);
                             pageLines.clear();
                             pageNumber++;
                         }
@@ -83,7 +84,7 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
                 }
                 // Process remaining lines (< 25)
                 if (!pageLines.isEmpty()) {
-                    addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step);
+                    addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step, chunk);
                 }
                 return segments;
             }
@@ -94,8 +95,8 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
         }
     }
 
-    private void addChunks(List<TextSegment> segments, List<String> pageLines, int pageNumber, String fileName,
-                           EncoderModel encoderModel, int chunkSize, int step) {
+    private Integer addChunks(List<TextSegment> segments, List<String> pageLines, int pageNumber, String fileName,
+                              EncoderModel encoderModel, int chunkSize, int step, Integer chunkIndex) {
 
         for (int start = 0; start < pageLines.size(); start += step) {
             int end = Math.min(start + chunkSize, pageLines.size());
@@ -108,10 +109,12 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
             metadata.put(Constants.META_DATA_PAGE_NUMBER, pageNumber);
             metadata.put(Constants.META_DATA_LINE_NUMBER, start + 1);
             metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
-            metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getVersion());
+            metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentVersion());
             metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
+            metadata.put(Constants.META_CHUNK_INDEX, chunkIndex++);
             segments.add(TextSegment.from(chunk, metadata));
         }
+        return chunkIndex;
     }
 
     private String normalizeText(String text) {

@@ -4,34 +4,28 @@ import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.ChatModel.AISearchResponseDTO;
 import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
+import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
+import com.example.doc_intel.Entity.DocumentEntity;
 import com.example.doc_intel.Entity.UserEntity;
-import com.example.doc_intel.Enums.StoreType;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
-import com.example.doc_intel.Exceptions.MessageLengthException;
-import com.example.doc_intel.Exceptions.NullMessageException;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.ChatModels.LongChainChatModel.ChatModelFactory;
 import com.example.doc_intel.Repository.AIConfigRepository;
+import com.example.doc_intel.Repository.DocumentsRepository;
 import com.example.doc_intel.Repository.UserRepository;
-import com.example.doc_intel.Store.StoreFactory;
 import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
@@ -39,15 +33,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
-@Component
 @Slf4j
+@Component
+@AllArgsConstructor
 public class SearchService {
-
-    private final EmbeddingStore<TextSegment> embeddingStore;
 
     private final ChatModelFactory chatModelFactory;
 
@@ -55,18 +49,9 @@ public class SearchService {
 
     private final UserRepository userRepository;
 
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+    private final DocumentsRepository documentsRepository;
 
-    public SearchService(final StoreFactory storeFactory,
-                         final ChatModelFactory chatModelFactory,
-                         final AIConfigRepository aiConfigRepository,
-                         final UserRepository userRepository,
-                         @Value("${vector.data.store}") final StoreType storeType) {
-        this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
-        this.chatModelFactory = chatModelFactory;
-        this.aiConfigRepository = aiConfigRepository;
-        this.userRepository = userRepository;
-    }
+    private final EmbeddingRequestHandler embeddingRequestHandler;
 
     public SearchResponseDTO processSearch(@NotBlank String query) {
         String email = Utils.getUserEmail();
@@ -77,25 +62,19 @@ public class SearchService {
         UserEntity userEntity = optionalUserEntity.get();
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
 
-        // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
         // Created Search Filter
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
-        // 3. Search OpenSearch
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-            .queryEmbedding(queryEmbedding)
-            .maxResults(5)
-            .minScore(0.5)
-            .filter(filter)
-            .build();
 
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
+        // Handing OpenSearch Request
+        EmbeddingSearchResult<TextSegment> searchResult =
+            embeddingRequestHandler.makeRequest(query, filter, 5);
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
         log.info("Retrieved chunks: {}", matches.size());
+
         // 5. Build context
-        createContext(matches, textSegmentResponseDTO);
+        createTextSegmentResponse(matches, textSegmentResponseDTO);
         try {
             log.info("Response Generated");
             return SearchResponseDTO.builder()
@@ -108,7 +87,7 @@ public class SearchService {
         }
     }
 
-    public AISearchResponseDTO processAISearch(@Nullable String documentId, @NotBlank String query) {
+    public AISearchResponseDTO processAISearch(@Nullable UUID documentId, @NotBlank String query) {
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
@@ -117,32 +96,40 @@ public class SearchService {
         UserEntity userEntity = optionalUserEntity.get();
 
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
-
-        // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
-
-        // Created Search Filter
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
+
+        // Document Handling and Create Filter
         if (Objects.nonNull(documentId)) {
-            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId));
+            Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+                .findByDocumentIdAndIsActiveTrue(documentId);
+
+            if (optionalDocumentEntity.isEmpty()) {
+                throw new NoResultFoundException("Document Not Found");
+            }
+            DocumentEntity documentEntity = optionalDocumentEntity.get();
+            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
         }
 
-        // 3. Search OpenSearch
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-            .queryEmbedding(queryEmbedding)
-            .maxResults(5)
-            .minScore(0.5)
-            .filter(filter)
-            .build();
-
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
+        // Handing OpenSearch Request
+        EmbeddingSearchResult<TextSegment> searchResult =
+            embeddingRequestHandler.makeRequest(query, filter, 5);
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
         log.info("Retrieved chunks: {}", matches.size());
-        // 5. Build context
-        String context = createContext(matches, textSegmentResponseDTO);
+
+        // 5. Build textSegmentResponseDTO
+        createTextSegmentResponse(matches, textSegmentResponseDTO);
+
+        // New Request Filter for more context
+        // make new filters to get prev and next chunk form the OpenSearch to get more context
+        filter = filter.and(Utils.getExtraContextFromOpenSearch(matches));
+        EmbeddingSearchResult<TextSegment> searchResultContext =
+            embeddingRequestHandler.makeFilterRequest(filter);
+
         // 6. Create RAG prompt
+        String context = createContext(searchResultContext.matches());
         final String prompt = Constants.PROMPT.formatted(context, query);
         ChatModel chatModel = getChatModel(email);
         try {
@@ -168,34 +155,41 @@ public class SearchService {
         return chatModelFactory.giveMeChatModel(aiConfig.getType()).giveMeModel(aiConfig);
     }
 
-    private String createContext(final List<EmbeddingMatch<TextSegment>> matches,
-                                 List<TextSegmentResponseDTO> textSegmentResponseDTO) {
+    public void createTextSegmentResponse(final List<EmbeddingMatch<TextSegment>> matches,
+                                          List<TextSegmentResponseDTO> textSegmentResponseDTO) {
 
-        return matches.stream()
-            .map(match -> {
-                TextSegment segment = match.embedded();
-                Metadata metadata = segment.metadata();
-                String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
-                Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
-                Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-                String docId = metadata.getString(Constants.META_DOCUMENT_ID);
-                String text = segment.text();
-                double score = match.score() * 100;
-                String version = metadata.getString(Constants.META_DOCUMENT_VERSION);
-                String userId = metadata.getString(Constants.META_USER_ID);
-                textSegmentResponseDTO.add(
-                    TextSegmentResponseDTO.builder()
-                        .fileName(fileName)
-                        .pageNumber(pageNumber)
-                        .lineNumber(lineNumber)
-                        .text(text)
-                        .userId(userId)
-                        .version(version)
-                        .documentId(docId)
-                        .score(String.format("%.2f%%", score))
-                        .build());
-                return match.embedded().text();
-            })
-            .collect(Collectors.joining("\n\n"));
+        matches.forEach(match -> {
+            TextSegment segment = match.embedded();
+            Metadata metadata = segment.metadata();
+            String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
+            Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
+            Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
+            String docId = metadata.getString(Constants.META_DOCUMENT_ID);
+            String text = segment.text();
+            double score = match.score() * 100;
+            Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
+            String userId = metadata.getString(Constants.META_USER_ID);
+            textSegmentResponseDTO.add(
+                TextSegmentResponseDTO.builder()
+                    .fileName(fileName)
+                    .pageNumber(pageNumber)
+                    .lineNumber(lineNumber)
+                    .text(text)
+                    .userId(userId)
+                    .version(version)
+                    .documentId(docId)
+                    .score(String.format("%.2f%%", score))
+                    .build());
+        });
+    }
+
+    public String createContext(final List<EmbeddingMatch<TextSegment>> matches) {
+        return matches.stream().map(match -> {
+            Metadata metadata = match.embedded().metadata();
+            String docId = metadata.getString(Constants.META_DOCUMENT_ID);
+            Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
+            Integer chunk = metadata.getInteger(Constants.META_CHUNK_INDEX);
+            return match.embedded().text();
+        }).collect(Collectors.joining("\n"));
     }
 }

@@ -47,10 +47,10 @@ public class DocumentProcessorService {
     private final MinIOProcessor minIOProcessor;
 
     DocumentProcessorService(@Value("${vector.data.store}") final StoreType storeType,
-            final StoreFactory storeFactory,
-            final DocumentEncoderFactory documentEncoderFactory,
-            final DocumentsRepository documentsRepository,
-            final MinIOProcessor minIOProcessor
+                             final StoreFactory storeFactory,
+                             final DocumentEncoderFactory documentEncoderFactory,
+                             final DocumentsRepository documentsRepository,
+                             final MinIOProcessor minIOProcessor
     ) {
         this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
         this.documentEncoderFactory = documentEncoderFactory;
@@ -62,22 +62,24 @@ public class DocumentProcessorService {
     public void processDocumentFromKafka(@NonNull KafkaEventDTO event) {
         //---------------------- Document Encoding and Storing Embedding
 
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentId(event.getDocumentId());
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            event.getDocumentId());
         if (optionalDocumentEntity.isEmpty()) {
             throw new DocumentNotExistException("Document Not Found During Kafka Process");
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
         // GetFile from the MinIO
-        InputStream file = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getVersionId());
+        InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getMinIOVersion());
 
         // Store Embeddings
         try {
-            Integer chunks = StoreEmbeddings(file, documentEntity.getFileExtensions(),
-                    event.getUserId().toString(),
-                    documentEntity.getVersion(),
-                    event.getDocumentId().toString(),
-                    documentEntity.getFileName()
+            Integer chunks = StoreEmbeddings(fileStream,
+                event.getFileExtensions(),
+                event.getUserId().toString(),
+                event.getDocumentVersion(),
+                event.getDocumentId().toString(),
+                event.getFileName()
             );
             documentEntity.setChunks(chunks);
         } catch (RuntimeException e) {
@@ -93,18 +95,20 @@ public class DocumentProcessorService {
      * Store Embeddings in the Vector Store
      */
     private Integer StoreEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
-            @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
-            @NonNull String fileName) {
+                                    @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
+                                    @NonNull String fileName) {
         documentEncoder = documentEncoderFactory.getParser(fileExtension);
         List<TextSegment> chunks;
         try {
             // Created Encoder Model
             EncoderModel encoderModel = EncoderModel.builder()
-                    .fileStream(fileStream)
-                    .userId(userId)
-                    .version(version)
-                    .documentId(documentId)
-                    .fileName(fileName).build();
+                .fileStream(fileStream)
+                .userId(userId)
+                .documentVersion(version)
+                .documentId(documentId)
+                .line(8)
+                .overlapLine(1)
+                .fileName(fileName).build();
 
             chunks = documentEncoder.encode(encoderModel);
             log.info("Number of chunks: {}", chunks.size());

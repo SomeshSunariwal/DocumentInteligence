@@ -27,7 +27,7 @@ public class PublisherService {
     }
 
     private void  updateDocumentStatus(@NonNull KafkaEventDTO kafkaEventDTO) {
-        Optional<DocumentEntity> documentEntityOptional = documentsRepository.findByDocumentId(
+        Optional<DocumentEntity> documentEntityOptional = documentsRepository.findByDocumentIdAndIsActiveTrue(
             kafkaEventDTO.getDocumentId());
         // Certainly not possible but good to have
         if (documentEntityOptional.isEmpty()) {
