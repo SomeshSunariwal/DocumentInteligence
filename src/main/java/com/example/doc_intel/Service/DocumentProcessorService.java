@@ -1,5 +1,13 @@
 package com.example.doc_intel.Service;
 
+import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.doc_intel.DTO.EncoderModel;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
@@ -13,6 +21,7 @@ import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.DocumentsRepository;
 import com.example.doc_intel.Store.StoreFactory;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -20,13 +29,6 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2Embedding
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.io.InputStream;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -60,28 +62,31 @@ public class DocumentProcessorService {
     public void processDocumentFromKafka(@NonNull KafkaEventDTO event) {
         //---------------------- Document Encoding and Storing Embedding
 
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentId(event.getDocumentId());
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            event.getDocumentId());
         if (optionalDocumentEntity.isEmpty()) {
             throw new DocumentNotExistException("Document Not Found During Kafka Process");
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
         // GetFile from the MinIO
-        InputStream file = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getVersionId());
+        InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getMinIOVersion());
 
         // Store Embeddings
         try {
-            StoreEmbeddings(file, documentEntity.getFileExtensions(),
+            Integer chunks = StoreEmbeddings(fileStream,
+                event.getFileExtensions(),
                 event.getUserId().toString(),
-                documentEntity.getVersion(),
+                event.getDocumentVersion(),
                 event.getDocumentId().toString(),
-                documentEntity.getFileName()
+                event.getFileName()
             );
+            documentEntity.setChunks(chunks);
         } catch (RuntimeException e) {
-            log.error("Failed to process the event: {}", event.getEventId());
             documentEntity.setStatus(DocumentStatus.FAILED);
+            log.error("Failed to process the event: {}", event.getEventId());
+            return;
         }
-
         // Update Database
         documentEntity.setStatus(DocumentStatus.COMPLETED);
     }
@@ -89,9 +94,9 @@ public class DocumentProcessorService {
     /**
      * Store Embeddings in the Vector Store
      */
-    private void StoreEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
-                                 @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
-                                 @NonNull String fileName) {
+    private Integer StoreEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
+                                    @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
+                                    @NonNull String fileName) {
         documentEncoder = documentEncoderFactory.getParser(fileExtension);
         List<TextSegment> chunks;
         try {
@@ -99,8 +104,10 @@ public class DocumentProcessorService {
             EncoderModel encoderModel = EncoderModel.builder()
                 .fileStream(fileStream)
                 .userId(userId)
-                .version(version)
+                .documentVersion(version)
                 .documentId(documentId)
+                .line(8)
+                .overlapLine(1)
                 .fileName(fileName).build();
 
             chunks = documentEncoder.encode(encoderModel);
@@ -109,7 +116,9 @@ public class DocumentProcessorService {
                 Embedding embedding = embeddingModel.embed(chunk).content();
                 embeddingStore.add(embedding, chunk);
             }
+            return chunks.size();
         } catch (Exception e) {
+            log.error("Failed to store the document : {}", e.getMessage());
             throw new ProcessFileException("Internal Server Error");
         }
     }

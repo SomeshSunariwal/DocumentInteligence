@@ -51,7 +51,7 @@ public class PublisherServiceTest {
         UUID uuid = UUID.nameUUIDFromBytes("Doc123".getBytes());
         // Arrange
         // Mock repository to return the existing document when finding by ID
-        when(documentsRepository.findByDocumentId(uuid)).thenReturn(Optional.of(existingDocument));
+        when(documentsRepository.findByDocumentIdAndIsActiveTrue(uuid)).thenReturn(Optional.of(existingDocument));
 
         // Act
         publisherService.publishDocument(mockKafkaEventDTO);
@@ -62,7 +62,7 @@ public class PublisherServiceTest {
 
         // 2. Verify the document status was updated to PROCESSING
         assertEquals(DocumentStatus.PROCESSING, existingDocument.getStatus());
-        verify(documentsRepository).findByDocumentId(uuid);
+        verify(documentsRepository).findByDocumentIdAndIsActiveTrue(uuid);
     }
 
     @Test
@@ -70,7 +70,7 @@ public class PublisherServiceTest {
         UUID uuid = UUID.nameUUIDFromBytes("Doc123".getBytes());
         // Arrange
         // Mock repository to return an empty Optional when document is not found
-        when(documentsRepository.findByDocumentId(uuid)).thenReturn(Optional.empty());
+        when(documentsRepository.findByDocumentIdAndIsActiveTrue(uuid)).thenReturn(Optional.empty());
 
         // Act & Assert
         // Verify that DocumentNotExistException is thrown when the document is not found
@@ -82,6 +82,6 @@ public class PublisherServiceTest {
 
         // Verify Kafka event was NOT published (or at least the flow stopped before it)
         verify(kafkaProducer, atLeastOnce()).publish(any());
-        verify(documentsRepository).findByDocumentId(uuid);
+        verify(documentsRepository).findByDocumentIdAndIsActiveTrue(uuid);
     }
 }

@@ -19,12 +19,18 @@ public class EncoderModel {
     final String userId;
 
     @NonNull
-    final Integer version;
+    final Integer documentVersion;
 
     @NonNull
     final String documentId;
 
     @NonNull
     final String fileName;
+
+    @NonNull
+    final Integer line;
+
+    @NonNull
+    final Integer overlapLine;
 
 }

@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 
+import java.util.UUID;
+
 @Tag(
         name = "Chat Operation",
         description = "This API is used to get the stream response"
@@ -42,7 +44,7 @@ public class ChatController {
             description = "Streams the AI-generated response for the provided question."
     )
     @GetMapping("/chat")
-    public ResponseEntity<ResponseBodyEmitter> chat(@RequestParam(name = "documentId") @Nullable String documentId,
+    public ResponseEntity<ResponseBodyEmitter> chat(@RequestParam(name = "documentId") @Nullable UUID documentId,
             @RequestParam(name = "query") @NotBlank String query) {
         ResponseBodyEmitter sse = chatService.chat(query, documentId);
         return ResponseEntity.ok().contentType(TEXT_EVENT_STREAM).body(sse);

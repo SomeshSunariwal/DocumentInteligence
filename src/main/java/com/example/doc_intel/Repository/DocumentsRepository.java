@@ -14,9 +14,7 @@ import lombok.NonNull;
 @Component
 public interface DocumentsRepository extends JpaRepository<DocumentEntity, UUID> {
 
-    DocumentEntity findByDocumentIdAndIsActiveTrue(@NonNull UUID documentId);
+    Optional<DocumentEntity> findByDocumentIdAndIsActiveTrue(@NonNull UUID documentId);
 
     List<DocumentEntity> findByUser_EmailAndIsActiveTrue(@NonNull String email);
-
-    Optional<DocumentEntity> findByDocumentId(@NonNull UUID documentId);
 }

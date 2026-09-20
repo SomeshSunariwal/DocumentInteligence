@@ -24,40 +24,76 @@ public class PDFDocumentEncoder implements DocumentEncoder {
     @Override
     public List<TextSegment> encode(@NonNull final EncoderModel encoderModel) {
         log.info("Using PDF Encoder");
+
         try {
             List<TextSegment> segments = new ArrayList<>();
             String fileName = encoderModel.getFileName();
             try (PDDocument pdf = Loader.loadPDF(encoderModel.getFileStream().readAllBytes())) {
+                PDFTextStripper stripper = new PDFTextStripper();
 
-                for (int page = 0; page < pdf.getNumberOfPages(); page++) {
-                    PDFTextStripper stripper = new PDFTextStripper();
-                    stripper.setStartPage(page + 1);
-                    stripper.setEndPage(page + 1);
+                final int chunkSize = encoderModel.getLine();
+                final int overlap = encoderModel.getOverlapLine();
+
+                final int step = chunkSize - overlap;
+                for (int page = 0, chunkIndex = 1; page < pdf.getNumberOfPages(); page++) {
+                    int pageNumber = page + 1;
+                    stripper.setStartPage(pageNumber);
+                    stripper.setEndPage(pageNumber);
                     String pageText = stripper.getText(pdf);
+                    if (pageText == null || pageText.isBlank()) {
+                        continue;
+                    }
                     String[] lines = pageText.split("\\R");
+                    // Clean lines first
+                    List<String> validLines = new ArrayList<>();
+                    for (String line : lines) {
+                        String text = normalizeText(line);
+                        if (!text.isBlank()) {
+                            validLines.add(text);
+                        }
+                    }
+                    // Create chunks with 1-line overlap
+                    for (int start = 0 ; start < validLines.size(); start += step) {
 
-                    for (int line = 0; line < lines.length; line++) {
-                        String text = lines[line].trim();
-                        if (text.isEmpty()) {
+                        int end = Math.min(start + chunkSize, validLines.size());
+                        String chunk = String.join("\n", validLines.subList(start, end));
+
+                        // Safety check before TextSegment
+                        if (chunk.isBlank()) {
                             continue;
                         }
                         Metadata metadata = new Metadata();
                         metadata.put(Constants.META_DATA_FILE_NAME, fileName);
-                        metadata.put(Constants.META_DATA_PAGE_NUMBER, page + 1);
-                        metadata.put(Constants.META_DATA_LINE_NUMBER, line + 1);
+                        metadata.put(Constants.META_DATA_PAGE_NUMBER, pageNumber);
+                        metadata.put(Constants.META_DATA_LINE_NUMBER, start + 1);
                         metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
-                        metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentId());
+                        metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getDocumentVersion());
                         metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
-                        TextSegment segment = TextSegment.from(text, metadata);
-                        segments.add(segment);
+                        metadata.put(Constants.META_CHUNK_INDEX, chunkIndex++);
+                        segments.add(TextSegment.from(chunk, metadata));
                     }
                 }
                 return segments;
             }
+
         } catch (IOException exception) {
+            log.error("Error while reading PDF: {}", encoderModel.getFileName(), exception);
             throw new FileReadError("Error While Reading PDF File");
-        } catch (Exception e) {
+
+        } catch (Exception exception) {
+            log.error("Unexpected error while encoding PDF: {}", encoderModel.getFileName(), exception);
             throw new InternalServerErrorException("Internal Server Error");
         }
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+            .replace('\u00A0', ' ')
+            .replace('\u2007', ' ')
+            .replace('\u202F', ' ')
+            .trim();
     }
 }

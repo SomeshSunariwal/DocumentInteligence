@@ -17,7 +17,9 @@ public class OpenSearchMetaDataDTO {
 
     private String userId;
 
-    private String version;
+    private Integer documentVersion;
 
     private String documentId;
+
+    private Integer chunkIndex;
 }

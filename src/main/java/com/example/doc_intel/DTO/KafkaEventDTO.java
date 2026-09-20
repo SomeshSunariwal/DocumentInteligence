@@ -1,5 +1,6 @@
 package com.example.doc_intel.DTO;
 
+import com.example.doc_intel.Enums.FileExtensions;
 import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -30,10 +31,12 @@ public class KafkaEventDTO {
     private String fileName;
 
     @NonNull
-    private Integer version;
+    private FileExtensions fileExtensions;
+
+    @NonNull
+    private Integer documentVersion;
 
     //MinIO versionId
     @NonNull
-    private String versionId;
-
+    private String minIOVersion;
 }

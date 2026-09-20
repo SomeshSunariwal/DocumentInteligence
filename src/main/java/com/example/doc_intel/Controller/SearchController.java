@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 
 import javax.annotation.Nullable;
+import java.util.UUID;
 
 
 /**
@@ -51,7 +52,7 @@ public class SearchController {
      */
     @GetMapping("/users/chat")
     public ResponseEntity<AISearchResponseDTO> postAISearch(
-        @RequestParam(name = "documentId") @Nullable String documentId,
+        @RequestParam(name = "documentId") @Nullable UUID documentId,
         @RequestParam(name = "query") @NotBlank String query) {
         AISearchResponseDTO searchResponseDTO = searchService.processAISearch(documentId, query);
         return ResponseEntity.ok().body(searchResponseDTO);
