@@ -22,38 +22,106 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
     @Override
     public List<TextSegment> encode(@NonNull final EncoderModel encoderModel) {
         log.info("Using Text File Encoder");
+
         try {
             List<TextSegment> segments = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(
-                    encoderModel.getFileStream(),
-                    StandardCharsets.UTF_8))) {
 
+            final int chunkSize = 6;
+            final int overlap = 1;
+            final int step = chunkSize - overlap;
+            final int maxLinesPerPage = 25;
+            final int maxCharsPerLine = 78;
+
+            try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(encoderModel.getFileStream(), StandardCharsets.UTF_8))) {
                 String fileName = encoderModel.getFileName();
+                List<String> pageLines = new ArrayList<>();
                 String line;
-                int lineNumber = 1;
+                int pageNumber = 1;
+
                 while ((line = reader.readLine()) != null) {
                     if (line.isBlank()) {
-                        lineNumber++;
                         continue;
                     }
-                    Metadata metadata = new Metadata();
-                    metadata.put(Constants.META_DATA_FILE_NAME, fileName);
-                    metadata.put(Constants.META_DATA_LINE_NUMBER, lineNumber);
-                    metadata.put(Constants.META_DATA_PAGE_NUMBER, 0);
-                    metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
-                    metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getVersion());
-                    metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
-                    TextSegment segment =
-                        TextSegment.from(line, metadata);
+                    String normalizedLine = normalizeText(line);
+                    if (normalizedLine.isBlank()) {
+                        continue;
+                    }
+                    // Split long physical lines into max 78-character lines
+                    int start = 0;
+                    while (start < normalizedLine.length()) {
+                        int maxEnd = Math.min(start + maxCharsPerLine, normalizedLine.length());
+                        int end = maxEnd;
 
-                    segments.add(segment);
-                    lineNumber++;
+                        // If we haven't reached the end of the line,
+                        // try to break at the last whitespace.
+                        if (maxEnd < normalizedLine.length()) {
+                            int lastSpace = normalizedLine.lastIndexOf(' ', maxEnd);
+                            if (lastSpace > start) {
+                                end = lastSpace;
+                            }
+                        }
+
+                        String virtualLine = normalizedLine.substring(start, end).trim();
+                        if (!virtualLine.isBlank()) {
+                            pageLines.add(virtualLine);
+                        }
+                        // 25 virtual lines = one page
+                        if (pageLines.size() == maxLinesPerPage) {
+                            addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step);
+                            pageLines.clear();
+                            pageNumber++;
+                        }
+                        // Move forward
+                        start = end;
+                        // Skip the whitespace where we broke the line
+                        while (start < normalizedLine.length()
+                            && Character.isWhitespace(normalizedLine.charAt(start))) {
+                            start++;
+                        }
+                    }
+                }
+                // Process remaining lines (< 25)
+                if (!pageLines.isEmpty()) {
+                    addChunks(segments, pageLines, pageNumber, fileName, encoderModel, chunkSize, step);
                 }
                 return segments;
             }
+
         } catch (Exception e) {
+            log.error("Error while reading text file: {}", encoderModel.getFileName(), e);
             throw new FileReadError("Error While Reading File");
         }
+    }
+
+    private void addChunks(List<TextSegment> segments, List<String> pageLines, int pageNumber, String fileName,
+                           EncoderModel encoderModel, int chunkSize, int step) {
+
+        for (int start = 0; start < pageLines.size(); start += step) {
+            int end = Math.min(start + chunkSize, pageLines.size());
+            String chunk = String.join("\n", pageLines.subList(start, end));
+            if (chunk.isBlank()) {
+                continue;
+            }
+            Metadata metadata = new Metadata();
+            metadata.put(Constants.META_DATA_FILE_NAME, fileName);
+            metadata.put(Constants.META_DATA_PAGE_NUMBER, pageNumber);
+            metadata.put(Constants.META_DATA_LINE_NUMBER, start + 1);
+            metadata.put(Constants.META_USER_ID, encoderModel.getUserId());
+            metadata.put(Constants.META_DOCUMENT_VERSION, encoderModel.getVersion());
+            metadata.put(Constants.META_DOCUMENT_ID, encoderModel.getDocumentId());
+            segments.add(TextSegment.from(chunk, metadata));
+        }
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+            .replace('\u00A0', ' ')
+            .replace('\u2007', ' ')
+            .replace('\u202F', ' ')
+            .trim();
     }
 }

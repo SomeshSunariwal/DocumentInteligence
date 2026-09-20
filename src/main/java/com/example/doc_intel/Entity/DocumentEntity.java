@@ -56,20 +56,6 @@ public class DocumentEntity {
     @Enumerated(EnumType.STRING)
     private FileExtensions fileExtensions;
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    private String createdBy;
-
-    @NonNull
-    @Column(nullable = false)
-    private LocalDateTime updateAt;
-
-    @NonNull
-    @Column(nullable = false)
-    private String updatedBy;
-
     @NonNull
     @Column(nullable = false)
     private Boolean isActive;
@@ -85,6 +71,20 @@ public class DocumentEntity {
     @NonNull
     @Column(nullable = false)
     private String minIOVersionId;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private String createdBy;
+
+    @NonNull
+    @Column(nullable = false)
+    private LocalDateTime updateAt;
+
+    @NonNull
+    @Column(nullable = false)
+    private String updatedBy;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_email", referencedColumnName = "user_email", nullable = false)

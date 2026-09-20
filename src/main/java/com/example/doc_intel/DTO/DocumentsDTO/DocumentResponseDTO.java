@@ -1,6 +1,7 @@
 package com.example.doc_intel.DTO.DocumentsDTO;
 
 import com.example.doc_intel.Enums.DocumentStatus;
+import com.example.doc_intel.Enums.FileExtensions;
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -29,6 +30,9 @@ public class DocumentResponseDTO {
 
     @NonNull
     private Integer chunks;
+
+    @NonNull
+    private FileExtensions fileExtensions;
 
     @NonNull
     private LocalDateTime createdAt;
