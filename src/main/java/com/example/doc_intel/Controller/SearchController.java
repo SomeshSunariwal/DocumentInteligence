@@ -1,19 +1,17 @@
 package com.example.doc_intel.Controller;
 
-import com.example.doc_intel.DTO.ChatModel.SearchRequestDTO;
 import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
 import com.example.doc_intel.DTO.ChatModel.AISearchResponseDTO;
 import com.example.doc_intel.Service.SearchService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 
 import javax.annotation.Nullable;
@@ -37,29 +35,25 @@ public class SearchController {
     /**
      * API endpoint for performing search on the document.
      *
-     * @param documentId       ID of the document to perform search on.
-     * @param searchRequestDTO Request object containing search query
      * @return SearchResponseDTO   Response object containing search results.
      */
-    @PostMapping("/users/search")
-    public ResponseEntity<SearchResponseDTO> postSearch(@RequestParam(name = "documentId") @Nullable String documentId,
-                                                        @Valid @RequestBody SearchRequestDTO searchRequestDTO) {
-        SearchResponseDTO searchResponseDTO = searchService.processSearch(documentId, searchRequestDTO);
+    @GetMapping("/users/search")
+    public ResponseEntity<SearchResponseDTO> getSearch(@RequestParam(name = "query") @NotBlank String query) {
+        SearchResponseDTO searchResponseDTO = searchService.processSearch(query);
         return ResponseEntity.ok().body(searchResponseDTO);
     }
 
     /**
      * API endpoint for performing AI search on the document.
      *
-     * @param documentId       ID of the document to perform search on.
-     * @param searchRequestDTO Request object containing search query
+     * @param documentId ID of the document to perform search on.
      * @return
      */
-    @PostMapping("/users/generate")
+    @GetMapping("/users/chat")
     public ResponseEntity<AISearchResponseDTO> postAISearch(
         @RequestParam(name = "documentId") @Nullable String documentId,
-        @Valid @RequestBody SearchRequestDTO searchRequestDTO) {
-        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(documentId, searchRequestDTO);
+        @RequestParam(name = "query") @NotBlank String query) {
+        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(documentId, query);
         return ResponseEntity.ok().body(searchResponseDTO);
     }
 }

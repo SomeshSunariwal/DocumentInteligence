@@ -26,7 +26,7 @@ public class JwtService {
             .issuer("DocumentIntelligence.Com")
             .issuedAt(new Date())
             .expiration(
-                new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(15))
+                new Date(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(100))
             )
             .signWith(secretKey)
             .compact();

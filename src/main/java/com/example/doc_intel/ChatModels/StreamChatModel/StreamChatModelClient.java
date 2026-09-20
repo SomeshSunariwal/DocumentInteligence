@@ -11,9 +11,10 @@ public class StreamChatModelClient implements StreamChatModel {
     @Override
     public StreamingChatModel giveMeModel(AIConfig aiConfig) {
         return OpenAiStreamingChatModel.builder()
-                .baseUrl(aiConfig.getBaseURL())
-                .apiKey(aiConfig.getApiKey())
-                .modelName(aiConfig.getModelName())
-                .build();
+            .baseUrl(aiConfig.getBaseURL())
+            .apiKey(aiConfig.getApiKey())
+            .modelName(aiConfig.getModelName())
+            .maxTokens(1000)
+            .build();
     }
 }

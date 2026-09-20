@@ -20,6 +20,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalException {
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ExceptionDTO> handleAllExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ExceptionDTO> handleAllRuntime(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(MessageLengthException.class)
     ResponseEntity<ExceptionDTO> handleMessageLengthException(MessageLengthException e) {
         return ResponseEntity

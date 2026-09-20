@@ -2,7 +2,6 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.ChatModel.AISearchResponseDTO;
-import com.example.doc_intel.DTO.ChatModel.SearchRequestDTO;
 import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import com.example.doc_intel.Entity.AIConfig;
@@ -69,32 +68,19 @@ public class SearchService {
         this.userRepository = userRepository;
     }
 
-    public SearchResponseDTO processSearch(@Nullable String documentId, final SearchRequestDTO searchRequestDTO) {
+    public SearchResponseDTO processSearch(@NotBlank String query) {
         String email = Utils.getUserEmail();
-        log.info("Processing search request for documentId={}, email={}", documentId, email);
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
             throw new UserNotExistException("User Not Exist");
         }
         UserEntity userEntity = optionalUserEntity.get();
-
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
-        String message = searchRequestDTO.getSearchTerm();
-
-        if (Objects.isNull(message)) {
-            throw new NullMessageException("Message cannot be null");
-        }
-        if (message.isEmpty()) {
-            throw new MessageLengthException("Please Provide a Question");
-        }
 
         // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(message).content();
+        Embedding queryEmbedding = embeddingModel.embed(query).content();
         // Created Search Filter
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
-        if (Objects.nonNull(documentId)) {
-            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId));
-        }
         // 3. Search OpenSearch
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
             .queryEmbedding(queryEmbedding)
@@ -108,32 +94,8 @@ public class SearchService {
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
         log.info("Retrieved chunks: {}", matches.size());
-
         // 5. Build context
-        matches.forEach(match -> {
-            TextSegment segment = match.embedded();
-            Metadata metadata = segment.metadata();
-            String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
-            Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
-            Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-            String text = segment.text();
-            double score = match.score() * 100;
-            Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
-            String userId = metadata.getString(Constants.META_USER_ID);
-            String docId = metadata.getString(Constants.META_DOCUMENT_ID);
-            textSegmentResponseDTO.add(
-                TextSegmentResponseDTO.builder()
-                    .fileName(fileName)
-                    .pageNumber(pageNumber)
-                    .lineNumber(lineNumber)
-                    .text(text)
-                    .version(version)
-                    .userId(userId)
-                    .documentId(docId)
-                    .score(String.format("%.2f%%", score))
-                    .build());
-        });
-
+        createContext(matches, textSegmentResponseDTO);
         try {
             log.info("Response Generated");
             return SearchResponseDTO.builder()
@@ -144,10 +106,9 @@ public class SearchService {
         } catch (Exception e) {
             throw new ProcessFileException("Something Went Wrong With Chat Model");
         }
-
     }
 
-    public AISearchResponseDTO processAISearch(@Nullable String documentId, final SearchRequestDTO searchRequestDTO) {
+    public AISearchResponseDTO processAISearch(@Nullable String documentId, @NotBlank String query) {
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
@@ -156,18 +117,9 @@ public class SearchService {
         UserEntity userEntity = optionalUserEntity.get();
 
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
-        String message = searchRequestDTO.getSearchTerm();
-        if (Objects.isNull(message)) {
-            throw new NullMessageException("Message cannot be null");
-        }
-        if (message.isEmpty()) {
-            throw new MessageLengthException("Please Provide a Question");
-        }
-
-        ChatModel chatModel = getChatModel(email);
 
         // 2. Convert question into embedding
-        Embedding queryEmbedding = embeddingModel.embed(message).content();
+        Embedding queryEmbedding = embeddingModel.embed(query).content();
 
         // Created Search Filter
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
@@ -188,60 +140,18 @@ public class SearchService {
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
         log.info("Retrieved chunks: {}", matches.size());
-
         // 5. Build context
-        String context = matches.stream()
-            .map(match -> {
-                TextSegment segment = match.embedded();
-                Metadata metadata = segment.metadata();
-                String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
-                Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
-                Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
-                String docId = metadata.getString(Constants.META_DOCUMENT_ID);
-                String text = segment.text();
-                double score = match.score() * 100;
-                Integer version = metadata.getInteger(Constants.META_DOCUMENT_VERSION);
-                textSegmentResponseDTO.add(
-                    TextSegmentResponseDTO.builder()
-                        .fileName(fileName)
-                        .pageNumber(pageNumber)
-                        .lineNumber(lineNumber)
-                        .text(text)
-                        .version(version)
-                        .documentId(docId)
-                        .score(String.format("%.2f%%", score))
-                        .build());
-                return match.embedded().text();
-            })
-            .collect(Collectors.joining("\n\n"));
-
+        String context = createContext(matches, textSegmentResponseDTO);
         // 6. Create RAG prompt
-        String prompt = """
-            You are a document question-answering assistant.
-            
-            Answer the question using ONLY the context
-            provided below.
-            
-            If the answer is not present in the context,
-            say that you do not know.
-            
-            CONTEXT:
-            %s
-            
-            QUESTION:
-            %s
-            
-            ANSWER:
-            """.formatted(context, searchRequestDTO.getSearchTerm());
-
+        final String prompt = Constants.PROMPT.formatted(context, query);
+        ChatModel chatModel = getChatModel(email);
         try {
             String answer = chatModel.chat(prompt);
-            log.info("Response Generated");
+            log.info("Response Generated : {}", answer);
             return AISearchResponseDTO.builder()
                 .result(answer)
                 .textSegmentResponseDTOList(textSegmentResponseDTO)
                 .build();
-
         } catch (NoResultFoundException e) {
             throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
         } catch (Exception e) {
@@ -255,7 +165,37 @@ public class SearchService {
             throw new AIConfigNotExistException("AI Config Not Exist");
         }
         AIConfig aiConfig = optionalAIConfig.get();
-
         return chatModelFactory.giveMeChatModel(aiConfig.getType()).giveMeModel(aiConfig);
+    }
+
+    private String createContext(final List<EmbeddingMatch<TextSegment>> matches,
+                                 List<TextSegmentResponseDTO> textSegmentResponseDTO) {
+
+        return matches.stream()
+            .map(match -> {
+                TextSegment segment = match.embedded();
+                Metadata metadata = segment.metadata();
+                String fileName = metadata.getString(Constants.META_DATA_FILE_NAME);
+                Integer pageNumber = metadata.getInteger(Constants.META_DATA_PAGE_NUMBER);
+                Integer lineNumber = metadata.getInteger(Constants.META_DATA_LINE_NUMBER);
+                String docId = metadata.getString(Constants.META_DOCUMENT_ID);
+                String text = segment.text();
+                double score = match.score() * 100;
+                String version = metadata.getString(Constants.META_DOCUMENT_VERSION);
+                String userId = metadata.getString(Constants.META_USER_ID);
+                textSegmentResponseDTO.add(
+                    TextSegmentResponseDTO.builder()
+                        .fileName(fileName)
+                        .pageNumber(pageNumber)
+                        .lineNumber(lineNumber)
+                        .text(text)
+                        .userId(userId)
+                        .version(version)
+                        .documentId(docId)
+                        .score(String.format("%.2f%%", score))
+                        .build());
+                return match.embedded().text();
+            })
+            .collect(Collectors.joining("\n\n"));
     }
 }
