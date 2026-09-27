@@ -22,9 +22,9 @@ public class KafkaConsumer {
         groupId = "document-processing-group"
     )
     public void consumer(KafkaEventDTO event) {
-        log.info("Processing Event Id: {}", event.getEventId());
+        log.info("Processing Document Id: {}", event.getDocumentId());
         documentProcessorService.processDocumentFromKafka(event);
-        log.info("Processed Event Id: {}", event.getEventId());
+        log.info("Processed Document Id: {}", event.getDocumentId());
     }
 
 }

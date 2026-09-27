@@ -1,27 +1,44 @@
 package com.example.doc_intel.Service;
 
+import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.DTO.ChatModel.ChatStreamResponse;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
+import com.example.doc_intel.DTO.DocumentsDTO.DocumentSummeryResponse;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
+import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
+import com.example.doc_intel.Entity.AIConfig;
 import com.example.doc_intel.Entity.DocumentEntity;
 import com.example.doc_intel.Entity.UserEntity;
+import com.example.doc_intel.Enums.ChatDataType;
 import com.example.doc_intel.Enums.DocumentStatus;
 import com.example.doc_intel.Enums.FileExtensions;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
+import com.example.doc_intel.Exceptions.UnAuthenticatedUser;
 import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
+import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.DocumentsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.minio.ObjectWriteResponse;
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,8 +46,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+
 @Service
 @Slf4j
+@AllArgsConstructor
 public class DocumentService {
 
     private final MinIOProcessor minIOProcessor;
@@ -41,15 +61,11 @@ public class DocumentService {
 
     private final PublisherService publisherService;
 
-    DocumentService(MinIOProcessor minIOProcessor,
-                    UserRepository userRepository,
-                    DocumentsRepository documentsRepository,
-                    PublisherService publisherService) {
-        this.minIOProcessor = minIOProcessor;
-        this.userRepository = userRepository;
-        this.documentsRepository = documentsRepository;
-        this.publisherService = publisherService;
-    }
+    private final AIConfigRepository aiConfigRepository;
+
+    private final StreamChatModelClient streamChatModelClient;
+
+    private final EmbeddingRequestHandler embeddingRequestHandler;
 
     /**
      * Upload File to MinIO and Store Embedding in the Vector Store
@@ -89,7 +105,8 @@ public class DocumentService {
         UserEntity userEntity = optionalUserEntity.get();
 
         // Documen Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            documentId);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
@@ -139,6 +156,7 @@ public class DocumentService {
             .URI(null)
             .documentId(documentEntity.getDocumentId())
             .fileName(file.getOriginalFilename())
+            .fileSize(file.getSize())
             .fileExtensions(fileExtension)
             .chunks(documentEntity.getChunks())
             .createdAt(documentEntity.getCreatedAt())
@@ -161,7 +179,8 @@ public class DocumentService {
         }
 
         // Document Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            documentId);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
@@ -179,6 +198,7 @@ public class DocumentService {
             .chunks(documentEntity.getChunks())
             .fileExtensions(documentEntity.getFileExtensions())
             .fileName(documentEntity.getFileName())
+            .fileSize(documentEntity.getFileSize())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .build();
@@ -207,9 +227,12 @@ public class DocumentService {
         List<DocumentResponseDTO> documents = documentEntity.stream().map(
             document -> {
                 // get Persistence URI;
-                String url = minIOProcessor.getPresignedObjectUrl(document.getObjectKey());
+                String url = minIOProcessor.getPresignedObjectUrl(document.getObjectKey(), document.getContentType(),
+                    document.getFileName());
+
                 return DocumentResponseDTO.builder()
                     .fileName(document.getFileName())
+                    .fileSize(document.getFileSize())
                     .fileExtensions(document.getFileExtensions())
                     .documentId(document.getDocumentId())
                     .URI(url)
@@ -247,16 +270,20 @@ public class DocumentService {
 
         // Document Check
         UserEntity userEntity = optionalUserEntity.get();
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            documentId);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
             throw new DocumentNotExistException("No Documents Found");
         }
 
         DocumentEntity documentEntity = optionalDocumentEntity.get();
-        String url = minIOProcessor.getPresignedObjectUrl(documentEntity.getObjectKey());
+        String url = minIOProcessor.getPresignedObjectUrl(documentEntity.getObjectKey(),
+            documentEntity.getContentType(), documentEntity.getFileName());
+
         return DocumentResponseDTO.builder()
             .fileName(documentEntity.getFileName())
+            .fileSize(documentEntity.getFileSize())
             .fileExtensions(documentEntity.getFileExtensions())
             .documentId(documentEntity.getDocumentId())
             .URI(url)
@@ -330,11 +357,101 @@ public class DocumentService {
             .URI(null)
             .documentId(documentEntityResponse.getDocumentId())
             .fileName(file.getOriginalFilename())
+            .fileSize(documentEntity.getFileSize())
             .fileExtensions(fileExtension)
             .chunks(documentEntityResponse.getChunks())
             .createdAt(documentEntity.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .status(documentEntity.getStatus())
             .build();
+    }
+
+
+    /**
+     * Get Document Summery of the User with DocumentId
+     */
+    @Transactional
+    public ResponseBodyEmitter getDocumentSummery(@NonNull UUID documentId) {
+        String email = Utils.getUserEmail();
+
+        // User At-least exist
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
+            log.info("User Email: {} not exist", email);
+            throw new UserNotExistException("User not Exist");
+        }
+        UserEntity userEntity = optionalUserEntity.get();
+
+        // Document should also exist
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
+            documentId);
+        if (optionalDocumentEntity.isEmpty()) {
+            log.info("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found");
+        }
+        DocumentEntity documentEntity = optionalDocumentEntity.get();
+
+        // AI Config Should Exist.
+        Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
+        if (aiConfigOptional.isEmpty()) {
+            throw new UnAuthenticatedUser("No Config Found");
+        }
+        AIConfig aiConfig = aiConfigOptional.get();
+        StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);
+
+        // Create Filter to Open Search to get the context
+        Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
+
+        // Document Handling and Create Filter for the latest document
+        filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
+            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+
+        EmbeddingSearchResult<TextSegment> searchResultContext = embeddingRequestHandler.makeFilterRequest(filter);
+
+        // 6. Create RAG prompt
+        final String context = Utils.createContext(searchResultContext.matches());
+        final String prompt =
+            Constants.PROMPT.formatted(context, Constants.INTERNAL_QUESTION);
+
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(10 * 60 * 1000L);
+        chatModel.chat(prompt, new StreamingChatResponseHandler() {
+
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    DocumentSummeryResponse documentSummeryResponse = DocumentSummeryResponse.builder()
+                        .type(ChatDataType.CHUNK.name())
+                        .data(partialResponse)
+                        .success(false)
+                        .error(false).build();
+                    Utils.sendResponse(emitter, documentSummeryResponse);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse response) {
+                    DocumentSummeryResponse documentSummeryResponse = DocumentSummeryResponse.builder()
+                        .type(ChatDataType.COMPLETED.name())
+                        .data(null)
+                        .success(true)
+                        .error(false)
+                        .build();
+                    Utils.sendResponse(emitter, documentSummeryResponse);
+                    emitter.complete();
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    log.error("LLM streaming Error: {}", error.getMessage());
+                    DocumentSummeryResponse documentSummeryResponse = DocumentSummeryResponse.builder()
+                        .type(ChatDataType.ERROR.name())
+                        .data("Unable to generate response")
+                        .success(false)
+                        .error(true)
+                        .build();
+                    Utils.sendResponse(emitter, documentSummeryResponse);
+                    emitter.complete();
+                }
+            }
+        );
+        return emitter;
     }
 }

@@ -111,7 +111,7 @@ public class ChatService {
             embeddingRequestHandler.makeFilterRequest(filter);
 
         // 6. Create RAG prompt
-        String context = searchService.createContext(searchResultContext.matches());
+        String context = Utils.createContext(searchResultContext.matches());
         final String prompt = Constants.PROMPT.formatted(context, query);
 
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(10 * 60 * 1000L);
@@ -125,7 +125,7 @@ public class ChatService {
                         .success(false)
                         .error(false)
                         .textSegmentResponseDTO(null).build();
-                    sendResponse(emitter, chatStreamResponse);
+                    Utils.sendResponse(emitter, chatStreamResponse);
                 }
 
                 @Override
@@ -136,7 +136,7 @@ public class ChatService {
                         .success(true)
                         .error(false)
                         .textSegmentResponseDTO(textSegmentResponseDTO).build();
-                    sendResponse(emitter, chatStreamResponse);
+                    Utils.sendResponse(emitter, chatStreamResponse);
                     emitter.complete();
                 }
 
@@ -148,19 +148,11 @@ public class ChatService {
                         .success(false)
                         .error(true)
                         .textSegmentResponseDTO(null).build();
-                    sendResponse(emitter, chatStreamResponse);
+                    Utils.sendResponse(emitter, chatStreamResponse);
                     emitter.complete();
                 }
             }
         );
         return emitter;
-    }
-
-    private void sendResponse(ResponseBodyEmitter emitter, ChatStreamResponse response) {
-        try {
-            emitter.send(SseEmitter.event().data(response).build());
-        } catch (IOException e) {
-            emitter.completeWithError(e);
-        }
     }
 }

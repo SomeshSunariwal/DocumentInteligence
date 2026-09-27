@@ -11,6 +11,7 @@ import com.example.doc_intel.Utils.Utils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -22,6 +23,7 @@ public class ConfigService {
 
     private final UserRepository userRepository;
 
+    @Transactional
     public AIConfigResponseDTO addOrUpdateConfig(@NonNull AIConfigRequestDTO aiConfigRequestDTO) {
         String email = Utils.getUserEmail();
         // getConfig if present

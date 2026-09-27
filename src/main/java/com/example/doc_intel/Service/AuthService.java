@@ -1,5 +1,6 @@
 package com.example.doc_intel.Service;
 
+import com.example.doc_intel.DTO.UserDTOs.VerifyUserResponseDTO;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -22,15 +23,21 @@ public class AuthService {
     public UserLoginResponseDTO login(@NonNull UserLoginRequestDTO request) {
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassphrase()
-                )
+            new UsernamePasswordAuthenticationToken(
+                request.getUsername(),
+                request.getPassphrase()
+            )
         );
 
         String token = jwtService.generateToken(request.getUsername());
         return UserLoginResponseDTO.builder()
-                .email(request.getUsername())
-                .token(token).build();
+            .email(request.getUsername())
+            .token(token).build();
+    }
+
+    public VerifyUserResponseDTO verify() {
+        return VerifyUserResponseDTO.builder()
+            .validate(true)
+            .build();
     }
 }

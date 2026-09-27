@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.util.List;
 import java.util.UUID;
-
 
 /**
  * Controller class for handling document-related API endpoints.
@@ -81,5 +81,16 @@ public class DocumentController {
     public ResponseEntity<DocumentResponseDTO> getDocument(@NonNull @PathVariable UUID documentId) {
         DocumentResponseDTO documentResponseDTO = documentService.getDocument(documentId);
         return ResponseEntity.status(HttpStatus.OK).body(documentResponseDTO);
+    }
+
+    /**
+     * This is used to summarize the document
+     * @param documentId UUID
+     * @return Stream of words
+     */
+    @GetMapping("/users/documents/{documentId}/summery")
+    public ResponseEntity<ResponseBodyEmitter>  getDocumentSummery(@NonNull @PathVariable UUID documentId) {
+        ResponseBodyEmitter sse = documentService.getDocumentSummery(documentId);
+        return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).body(sse);
     }
 }

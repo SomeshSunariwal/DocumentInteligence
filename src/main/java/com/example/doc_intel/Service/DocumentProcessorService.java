@@ -65,7 +65,8 @@ public class DocumentProcessorService {
         Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
             event.getDocumentId());
         if (optionalDocumentEntity.isEmpty()) {
-            throw new DocumentNotExistException("Document Not Found During Kafka Process");
+            log.info("Document with id {} not found", event.getDocumentId());
+            throw new DocumentNotExistException("Document Not Found During Kafka Process :{}");
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
