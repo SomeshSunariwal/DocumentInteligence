@@ -2,7 +2,7 @@ package com.example.doc_intel.Controller;
 
 import javax.annotation.Nullable;
 
-import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,6 +47,6 @@ public class ChatController {
     public ResponseEntity<ResponseBodyEmitter> chat(@RequestParam(name = "documentId") @Nullable UUID documentId,
             @RequestParam(name = "query") @NotBlank String query) {
         ResponseBodyEmitter sse = chatService.chat(query, documentId);
-        return ResponseEntity.ok().contentType(TEXT_EVENT_STREAM).body(sse);
+        return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).body(sse);
     }
 }

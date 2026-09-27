@@ -21,6 +21,9 @@ public class DocumentResponseDTO {
     private String fileName;
 
     @NonNull
+    private Long fileSize;
+
+    @NonNull
     private UUID documentId;
 
     private String URI;

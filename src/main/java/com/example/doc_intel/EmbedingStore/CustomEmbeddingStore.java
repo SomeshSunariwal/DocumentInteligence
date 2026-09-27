@@ -177,7 +177,6 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment>, Custom
                 if (source == null) {
                     continue;
                 }
-                log.info("Hit Id : {}", hit.id());
                 Embedding embedding = Embedding.from(source.getVector());
                 String text = source.getText();
                 Metadata metadata = Utils.convertToMetaData(source.getMetadata());

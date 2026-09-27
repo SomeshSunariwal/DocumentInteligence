@@ -1,5 +1,6 @@
 package com.example.doc_intel.MinIOProcesser.MinIOProcessorImpl;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
@@ -33,14 +34,14 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     public ObjectWriteResponse putObject(@NonNull MultipartFile file, @NonNull String objectKey) {
         try {
             return minIOClientProvider.getClient().putObject(
-                    PutObjectArgs
-                            .builder()
-                            .object(objectKey)
-                            .bucket(Constants.MINIO_BUCKET_NAME)
-                            .stream(file.getInputStream(), file.getSize(), -1L) // Known Size Object
-                            .contentType(file.getContentType())
-                            .maxRetries(3)
-                            .build());
+                PutObjectArgs
+                    .builder()
+                    .object(objectKey)
+                    .bucket(Constants.MINIO_BUCKET_NAME)
+                    .stream(file.getInputStream(), file.getSize(), -1L) // Known Size Object
+                    .contentType(file.getContentType())
+                    .maxRetries(3)
+                    .build());
         } catch (Exception e) {
             log.error("Failed to upload object to MinIO. objectKey={}", objectKey, e);
             throw new MinIOObjectPutException("Exception: {}" + e.getMessage());
@@ -51,11 +52,11 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     public GetObjectResponse getObject(@NonNull String objectKey, @Nullable String versionId) {
         try {
             return minIOClientProvider.getClient().getObject(
-                    GetObjectArgs.builder()
-                            .bucket(Constants.MINIO_BUCKET_NAME)
-                            .object(objectKey)
-                            .versionId(versionId)
-                            .build()
+                GetObjectArgs.builder()
+                    .bucket(Constants.MINIO_BUCKET_NAME)
+                    .object(objectKey)
+                    .versionId(versionId)
+                    .build()
             );
         } catch (Exception e) {
             log.info("Exception During Getting Object: {}", e.getMessage());
@@ -64,16 +65,21 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     }
 
     @Override
-    public String getPresignedObjectUrl(@NonNull String objectKey) {
+    public String getPresignedObjectUrl(@NonNull String objectKey, @NonNull String contentType, @NonNull String fileName) {
+        Map<String, String> headers = Map.of(
+            "response-content-type", "%s".formatted(contentType),
+            "response-content-disposition", "inline; filename=%s".formatted(fileName)
+        );
 
         try {
             return minIOClientProvider.getClient().getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .object(objectKey)
-                            .bucket(Constants.MINIO_BUCKET_NAME)
-                            .expiry(60, TimeUnit.SECONDS)
-                            .method(Http.Method.GET)
-                            .build()
+                GetPresignedObjectUrlArgs.builder()
+                    .object(objectKey)
+                    .bucket(Constants.MINIO_BUCKET_NAME)
+                    .expiry(10, TimeUnit.MINUTES)
+                    .extraQueryParams(headers)
+                    .method(Http.Method.GET)
+                    .build()
             );
         } catch (Exception e) {
             log.info("Exception During Getting Presigned Object URL: {}", e.getMessage());

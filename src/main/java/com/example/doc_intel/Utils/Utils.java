@@ -18,8 +18,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
@@ -140,5 +144,18 @@ public class Utils {
             result = result.or(filters.get(i));
         }
         return result;
+    }
+
+    public static <T> void sendResponse(ResponseBodyEmitter emitter, T response) {
+        try {
+            emitter.send(SseEmitter.event().data(response).build());
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
+    }
+
+    public static String createContext(final List<EmbeddingMatch<TextSegment>> matches) {
+        return matches.stream().map(match -> match.embedded().text())
+            .collect(Collectors.joining("\n"));
     }
 }
