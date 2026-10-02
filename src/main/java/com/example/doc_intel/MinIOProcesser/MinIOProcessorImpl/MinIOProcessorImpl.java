@@ -44,7 +44,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build());
         } catch (Exception e) {
             log.error("Failed to upload object to MinIO. objectKey={}", objectKey, e);
-            throw new MinIOObjectPutException("Exception: {}" + e.getMessage());
+            throw new MinIOObjectPutException("Unable to upload object", e);
         }
     }
 
@@ -59,8 +59,8 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build()
             );
         } catch (Exception e) {
-            log.info("Exception During Getting Object: {}", e.getMessage());
-            throw new InternalServerErrorException("Internal Server Exception");
+            log.error("Failed to retrieve object from MinIO. objectKey={}", objectKey, e);
+            throw new InternalServerErrorException("Unable to retrieve object", e);
         }
     }
 
@@ -82,8 +82,8 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build()
             );
         } catch (Exception e) {
-            log.info("Exception During Getting Presigned Object URL: {}", e.getMessage());
-            throw new InternalServerErrorException("Internal Server Exception");
+            log.error("Failed to generate MinIO presigned URL. objectKey={}", objectKey, e);
+            throw new InternalServerErrorException("Unable to generate document URL", e);
         }
     }
 }

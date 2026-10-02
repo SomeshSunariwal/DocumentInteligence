@@ -12,6 +12,7 @@ import javax.annotation.Nullable;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.DocumentEntity;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Repository.DocumentsRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -70,7 +71,7 @@ public class ChatService {
 
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
-            throw new UnAuthenticatedUser("No Config Found");
+            throw new AIConfigNotExistException("AI configuration not found");
         }
         AIConfig aiConfig = aiConfigOptional.get();
         StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);

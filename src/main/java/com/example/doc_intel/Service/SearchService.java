@@ -79,16 +79,10 @@ public class SearchService {
 
         // 5. Build context
         createTextSegmentResponse(matches, textSegmentResponseDTO);
-        try {
-            log.info("Search Response Generated");
-            return SearchResponseDTO.builder()
-                .textSegmentResponseDTOList(textSegmentResponseDTO)
-                .build();
-        } catch (NoResultFoundException e) {
-            throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
-        } catch (Exception e) {
-            throw new ProcessFileException("Something Went Wrong With Chat Model");
-        }
+        log.info("Search Response Generated");
+        return SearchResponseDTO.builder()
+            .textSegmentResponseDTOList(textSegmentResponseDTO)
+            .build();
     }
 
     public AISearchResponseDTO processAISearch(@Nullable UUID documentId, @NotBlank String query) {
@@ -143,10 +137,9 @@ public class SearchService {
                 .result(answer)
                 .textSegmentResponseDTOList(textSegmentResponseDTO)
                 .build();
-        } catch (NoResultFoundException e) {
-            throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
-        } catch (Exception e) {
-            throw new ProcessFileException("Something Went Wrong With Chat Model");
+        } catch (RuntimeException e) {
+            log.error("Chat model request failed", e);
+            throw new ProcessFileException("Unable to generate an AI response", e);
         }
     }
 

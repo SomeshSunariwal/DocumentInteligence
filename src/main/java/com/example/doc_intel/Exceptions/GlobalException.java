@@ -17,19 +17,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestControllerAdvice
+@Slf4j
 public class GlobalException {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionDTO> handleAllExceptions(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ExceptionDTO> handleAllRuntime(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
+            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred"));
     }
 
     @ExceptionHandler(MessageLengthException.class)
@@ -120,7 +118,7 @@ public class GlobalException {
 
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
-            .body(new ExceptionDTO(HttpStatus.BAD_GATEWAY.value(), errors));
+            .body(new ExceptionDTO(HttpStatus.BAD_REQUEST.value(), errors));
     }
 
     @ExceptionHandler(PSQLDBException.class)
@@ -140,15 +138,15 @@ public class GlobalException {
     @ExceptionHandler(DocumentNotExistException.class)
     ResponseEntity<ExceptionDTO> handleDocumentNotExistException(DocumentNotExistException e) {
         return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+            .status(HttpStatus.NOT_FOUND)
+            .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
     }
 
     @ExceptionHandler(AIConfigNotExistException.class)
     ResponseEntity<ExceptionDTO> handleAIConfigNotExistException(AIConfigNotExistException e) {
         return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+            .status(HttpStatus.NOT_FOUND)
+            .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
     }
 
     @ExceptionHandler(UnsupportedFilterException.class)

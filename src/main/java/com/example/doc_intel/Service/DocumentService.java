@@ -2,10 +2,10 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DTO.ChatModel.ChatStreamResponse;
+import com.example.doc_intel.DTO.KafkaEventDTO;
+import com.example.doc_intel.DocumentProcesser.DocumentProcessor;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentSummeryResponse;
-import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
@@ -13,11 +13,8 @@ import com.example.doc_intel.Entity.DocumentEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.ChatDataType;
 import com.example.doc_intel.Enums.DocumentStatus;
-import com.example.doc_intel.Enums.FileExtensions;
-import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
-import com.example.doc_intel.Exceptions.UnAuthenticatedUser;
-import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.AIConfigRepository;
@@ -30,19 +27,16 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.filter.Filter;
-import io.minio.ObjectWriteResponse;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,10 +61,11 @@ public class DocumentService {
 
     private final EmbeddingRequestHandler embeddingRequestHandler;
 
+    private final DocumentProcessor documentProcessor;
+
     /**
      * Upload File to MinIO and Store Embedding in the Vector Store
      */
-    @Transactional(propagation = Propagation.REQUIRED)
     public List<DocumentResponseDTO> uploadFile(@NonNull List<MultipartFile> files) {
         //---------------- User Check
         String email = Utils.getUserEmail();
@@ -80,89 +75,23 @@ public class DocumentService {
             throw new UserNotExistException("User not Exist");
         }
         UserEntity userEntity = optionalUserEntity.get();
-        return files.stream()
-            .map(file -> processDocument(userEntity, file))
-            .toList();
+        List<KafkaEventDTO> kafkaEventDTOS = new ArrayList<>();
+        List<DocumentResponseDTO> documentResponseDTOS = documentProcessor.processDocuments(userEntity, files,
+            kafkaEventDTOS);
+        kafkaEventDTOS.forEach(publisherService::publishDocument);
+        return documentResponseDTOS;
     }
 
     /**
      * Update File to MinIO and Store Embedding in the Vector Store
      */
-    @Transactional
     public DocumentResponseDTO updateDocument(@NonNull UUID documentId,
                                               @NonNull MultipartFile file) {
         String email = Utils.getUserEmail();
-        FileExtensions fileExtension = Utils.getExtension(file);
-        if (Objects.isNull(fileExtension)) {
-            throw new UnSupportedFileException("File Type not support");
-        }
-        // User Check
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (optionalUserEntity.isEmpty()) {
-            log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
-        }
-        UserEntity userEntity = optionalUserEntity.get();
-
-        // Documen Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
-        if (optionalDocumentEntity.isEmpty()) {
-            log.info("Document Id: {} not exist", documentId);
-            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
-        }
-        DocumentEntity documentEntity = optionalDocumentEntity.get();
-
-        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
-            file.getOriginalFilename();
-        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
-
-        // Updated Document in the Table
-        String objectKey = documentEntity.getObjectKey();
-
-        // Upload File to MinIO
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Updated to : {}", objectWriteResponse.versionId());
-
-        // Updated Document in the Table
-        documentEntity.setFileName(fileName);
-        documentEntity.setFileSize(file.getSize());
-        documentEntity.setContentType(contentType);
-        documentEntity.setUpdateAt(LocalDateTime.now());
-        documentEntity.setUpdatedBy(email);
-        documentEntity.setStatus(DocumentStatus.UPLOADED);
-        documentEntity.setVersion(documentEntity.getVersion() + 1);
-        documentEntity.setChunks(0);
-        documentEntity.setFileExtensions(fileExtension);
-        documentEntity.setMinIOVersionId(objectWriteResponse.versionId());
-
-        // Create Kafka Event
-        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
-            .eventId(UUID.randomUUID())
-            .documentId(documentId)
-            .userId(userEntity.getUserId())
-            .objectKey(objectKey)
-            .fileName(documentEntity.getFileName())
-            .fileExtensions(fileExtension)
-            .documentVersion(documentEntity.getVersion())
-            .minIOVersion(objectWriteResponse.versionId())
-            .build();
-
-        // Publish Document Event
-        publisherService.publishDocument(kafkaEventDTO);
-
-        return DocumentResponseDTO.builder()
-            .version(documentEntity.getVersion())
-            .URI(null)
-            .documentId(documentEntity.getDocumentId())
-            .fileName(file.getOriginalFilename())
-            .fileSize(file.getSize())
-            .fileExtensions(fileExtension)
-            .chunks(documentEntity.getChunks())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .build();
+        List< KafkaEventDTO> kafkaEventDTO = new ArrayList<>();
+        DocumentResponseDTO documentResponseDTO = documentProcessor.processDocumentUpdate(email, documentId, file, kafkaEventDTO);
+        publisherService.publishDocument(kafkaEventDTO.getFirst());
+        return documentResponseDTO;
     }
 
     /**
@@ -295,78 +224,6 @@ public class DocumentService {
             .build();
     }
 
-    private DocumentResponseDTO processDocument(@NonNull UserEntity userEntity, @NonNull MultipartFile file) {
-        FileExtensions fileExtension = Utils.getExtension(file);
-        if (Objects.isNull(fileExtension)) {
-            throw new UnSupportedFileException("File Type not support");
-        }
-
-        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
-            file.getOriginalFilename();
-        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
-
-        UUID uuid = UUID.randomUUID();
-        String objectKey = Utils.getObjectKey(userEntity.getUsername(), uuid, fileName);
-
-        // Upload File to MinIO DataBase
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Created with : {}", objectWriteResponse.versionId());
-
-
-        //---------------------- Placed Document Object Into Table
-        DocumentEntity documentEntity = DocumentEntity.builder()
-            .documentId(uuid)
-            .fileName(file.getOriginalFilename())
-            .objectKey(objectKey)
-            .bucketName(Constants.MINIO_BUCKET_NAME)
-            .contentType(contentType)
-            .fileSize(file.getSize())
-            .fileExtensions(fileExtension)
-            .isActive(true)
-            .version(1)
-            .minIOVersionId(objectWriteResponse.versionId())
-            .status(DocumentStatus.UPLOADED)
-            .user(userEntity)
-            .createdAt(LocalDateTime.now())
-            .createdBy(userEntity.getUsername())
-            .updateAt(LocalDateTime.now())
-            .updatedBy(userEntity.getUsername())
-            .chunks(0)
-            .build();
-
-        //  Update Document Entity with Number of Chunks
-        DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
-
-        // Create Kafka Event
-        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
-            .eventId(uuid)
-            .documentId(uuid)
-            .userId(userEntity.getUserId())
-            .objectKey(objectKey)
-            .fileName(documentEntity.getFileName())
-            .fileExtensions(fileExtension)
-            .documentVersion(documentEntity.getVersion())
-            .minIOVersion(objectWriteResponse.versionId())
-            .build();
-
-        // Publish Document Event
-        publisherService.publishDocument(kafkaEventDTO);
-
-        return DocumentResponseDTO.builder()
-            .version(documentEntityResponse.getVersion())
-            .URI(null)
-            .documentId(documentEntityResponse.getDocumentId())
-            .fileName(file.getOriginalFilename())
-            .fileSize(documentEntity.getFileSize())
-            .fileExtensions(fileExtension)
-            .chunks(documentEntityResponse.getChunks())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .build();
-    }
-
-
     /**
      * Get Document Summery of the User with DocumentId
      */
@@ -394,7 +251,7 @@ public class DocumentService {
         // AI Config Should Exist.
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
-            throw new UnAuthenticatedUser("No Config Found");
+            throw new AIConfigNotExistException("AI configuration not found");
         }
         AIConfig aiConfig = aiConfigOptional.get();
         StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);

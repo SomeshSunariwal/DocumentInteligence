@@ -46,35 +46,41 @@ public class DocumentProcessorService {
 
     private final MinIOProcessor minIOProcessor;
 
+    private final DocumentProcessingStatusService documentProcessingStatusService;
+
     DocumentProcessorService(@Value("${vector.data.store}") final StoreType storeType,
                              final StoreFactory storeFactory,
                              final DocumentEncoderFactory documentEncoderFactory,
                              final DocumentsRepository documentsRepository,
-                             final MinIOProcessor minIOProcessor
+                             final MinIOProcessor minIOProcessor,
+                             final DocumentProcessingStatusService documentProcessingStatusService
     ) {
         this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
         this.documentEncoderFactory = documentEncoderFactory;
         this.documentsRepository = documentsRepository;
         this.minIOProcessor = minIOProcessor;
+        this.documentProcessingStatusService = documentProcessingStatusService;
     }
 
     @Transactional
     public void processDocumentFromKafka(@NonNull KafkaEventDTO event) {
         //---------------------- Document Encoding and Storing Embedding
+        documentProcessingStatusService.markProcessing(event.getDocumentId());
 
         Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
             event.getDocumentId());
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document with id {} not found", event.getDocumentId());
-            throw new DocumentNotExistException("Document Not Found During Kafka Process :{}");
+            throw new DocumentNotExistException(
+                "Document not found during Kafka processing: " + event.getDocumentId());
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
-        // GetFile from the MinIO
-        InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getMinIOVersion());
-
-        // Store Embeddings
         try {
+            // GetFile from the MinIO
+            InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getMinIOVersion());
+
+            // Store Embeddings
             Integer chunks = StoreEmbeddings(fileStream,
                 event.getFileExtensions(),
                 event.getUserId().toString(),
@@ -84,9 +90,9 @@ public class DocumentProcessorService {
             );
             documentEntity.setChunks(chunks);
         } catch (RuntimeException e) {
-            documentEntity.setStatus(DocumentStatus.FAILED);
-            log.error("Failed to process the event: {}", event.getEventId());
-            return;
+            documentProcessingStatusService.markFailed(event.getDocumentId());
+            log.error("Failed to process Kafka event: {}", event.getEventId(), e);
+            throw e;
         }
         // Update Database
         documentEntity.setStatus(DocumentStatus.COMPLETED);
