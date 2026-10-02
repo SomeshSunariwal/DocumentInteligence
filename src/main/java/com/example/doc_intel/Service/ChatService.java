@@ -1,6 +1,5 @@
 package com.example.doc_intel.Service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -17,7 +16,6 @@ import com.example.doc_intel.Repository.DocumentsRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
@@ -62,12 +60,11 @@ public class ChatService {
 
     public ResponseBodyEmitter chat(@NotBlank String query, @Nullable UUID documentId) {
         String email = Utils.getUserEmail();
-        Optional<UserEntity> optionalUser = userRepository.findByEmail(email);
+        Optional<UserEntity> optionalUser = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUser.isEmpty()) {
             throw new UnAuthenticatedUser("Unauthenticated user");
         }
         UserEntity userEntity = optionalUser.get();
-
 
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
@@ -82,7 +79,7 @@ public class ChatService {
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
         if (Objects.nonNull(documentId)) {
             Optional<DocumentEntity> optionalDocumentEntity =
-                documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+                documentsRepository.findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
             if (optionalDocumentEntity.isEmpty()) {
                 throw new NoResultFoundException("Document Not Found");
             }

@@ -43,7 +43,7 @@ public class DocumentProcessor {
     private final DocumentsRepository documentsRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public List<DocumentResponseDTO> processDocuments(@NonNull UserEntity user, @NonNull List<MultipartFile> files,
+    public List<DocumentResponseDTO> processUploadDocuments(@NonNull UserEntity user, @NonNull List<MultipartFile> files,
                                                       @NonNull List<KafkaEventDTO> kafkaEventDTOS) {
         List<DocumentResponseDTO> documentResponseDTOS = new ArrayList<>();
         for (MultipartFile file : files) {
@@ -65,8 +65,8 @@ public class DocumentProcessor {
         if (userOptional.isEmpty()) {
             throw new UserNotExistException("User not Exist");
         }
-
-        Optional<DocumentEntity> documentOptional = documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+        Optional<DocumentEntity> documentOptional = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (documentOptional.isEmpty()) {
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
         }
@@ -92,7 +92,7 @@ public class DocumentProcessor {
         document.setMinIOVersionId(writeResponse.versionId());
 
         kafkaEventDTOS.add(createEvent(user, document, fileExtension, writeResponse.versionId()));
-        return toResponse(document, file.getOriginalFilename());
+        return toResponse(document);
     }
 
     private DocumentResponseDTO processOneDocument(UserEntity user, MultipartFile file,
@@ -126,15 +126,15 @@ public class DocumentProcessor {
             .status(DocumentStatus.UPLOADED)
             .user(user)
             .createdAt(now)
-            .createdBy(user.getUsername())
+            .createdBy(user.getEmail())
             .updateAt(now)
-            .updatedBy(user.getUsername())
+            .updatedBy(user.getEmail())
             .chunks(0)
             .build();
 
         DocumentEntity savedDocument = documentsRepository.save(document);
         events.add(createEvent(user, savedDocument, fileExtension, writeResponse.versionId()));
-        return toResponse(savedDocument, file.getOriginalFilename());
+        return toResponse(savedDocument);
     }
 
     private KafkaEventDTO createEvent(UserEntity user, DocumentEntity document, FileExtensions extension,
@@ -151,12 +151,12 @@ public class DocumentProcessor {
             .build();
     }
 
-    private DocumentResponseDTO toResponse(DocumentEntity document, String originalFileName) {
+    private DocumentResponseDTO toResponse(DocumentEntity document) {
         return DocumentResponseDTO.builder()
             .version(document.getVersion())
             .URI(null)
             .documentId(document.getDocumentId())
-            .fileName(originalFileName)
+            .fileName(document.getFileName())
             .fileSize(document.getFileSize())
             .fileExtensions(document.getFileExtensions())
             .chunks(document.getChunks())

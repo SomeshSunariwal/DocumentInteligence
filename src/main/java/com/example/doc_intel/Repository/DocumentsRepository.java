@@ -16,5 +16,10 @@ public interface DocumentsRepository extends JpaRepository<DocumentEntity, UUID>
 
     Optional<DocumentEntity> findByDocumentIdAndIsActiveTrue(@NonNull UUID documentId);
 
+    Optional<DocumentEntity> findByDocumentIdAndUser_EmailAndIsActiveTrue(@NonNull UUID documentId,
+                                                                          @NonNull String email);
+
     List<DocumentEntity> findByUser_EmailAndIsActiveTrue(@NonNull String email);
+
+    Optional<DocumentEntity> findByDocumentIdAndVersionAndIsActiveTrue(@NonNull UUID documentId, @NonNull Integer version);
 }

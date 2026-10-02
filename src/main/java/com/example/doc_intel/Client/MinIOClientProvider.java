@@ -23,7 +23,6 @@ public class MinIOClientProvider implements Client<MinioClient> {
         @Value(("${MINIO.ROOT.USER}")) String ACCESS_KEY,
         @Value(("${MINIO.ROOT.PASSWORD}")) String SECRET
     ) {
-        log.info("Endpoint: {}, Access: {}, Secret: {}", ENDPOINT, ACCESS_KEY, SECRET);
         this.client = MinioClient.builder()
             .endpoint(ENDPOINT)
             .credentials(ACCESS_KEY, SECRET)

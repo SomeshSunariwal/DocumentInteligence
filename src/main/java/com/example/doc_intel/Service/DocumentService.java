@@ -76,7 +76,7 @@ public class DocumentService {
         }
         UserEntity userEntity = optionalUserEntity.get();
         List<KafkaEventDTO> kafkaEventDTOS = new ArrayList<>();
-        List<DocumentResponseDTO> documentResponseDTOS = documentProcessor.processDocuments(userEntity, files,
+        List<DocumentResponseDTO> documentResponseDTOS = documentProcessor.processUploadDocuments(userEntity, files,
             kafkaEventDTOS);
         kafkaEventDTOS.forEach(publisherService::publishDocument);
         return documentResponseDTOS;
@@ -108,8 +108,8 @@ public class DocumentService {
         }
 
         // Document Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
@@ -199,8 +199,8 @@ public class DocumentService {
 
         // Document Check
         UserEntity userEntity = optionalUserEntity.get();
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
             throw new DocumentNotExistException("No Documents Found");
@@ -240,8 +240,8 @@ public class DocumentService {
         UserEntity userEntity = optionalUserEntity.get();
 
         // Document should also exist
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
             throw new DocumentNotExistException("No Documents Found");

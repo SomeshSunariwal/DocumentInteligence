@@ -1,5 +1,6 @@
 package com.example.doc_intel.Service;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +30,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2Embedding
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+
 
 @Service
 @Slf4j
@@ -65,10 +67,10 @@ public class DocumentProcessorService {
     @Transactional
     public void processDocumentFromKafka(@NonNull KafkaEventDTO event) {
         //---------------------- Document Encoding and Storing Embedding
-        documentProcessingStatusService.markProcessing(event.getDocumentId());
+        documentProcessingStatusService.markProcessing(event.getDocumentId(), event.getDocumentVersion());
 
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            event.getDocumentId());
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndVersionAndIsActiveTrue(event.getDocumentId(), event.getDocumentVersion());
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document with id {} not found", event.getDocumentId());
             throw new DocumentNotExistException(
@@ -78,21 +80,23 @@ public class DocumentProcessorService {
 
         try {
             // GetFile from the MinIO
-            InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(), event.getMinIOVersion());
+            Integer chunks;
+            try (InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(),
+                event.getMinIOVersion())) {
 
-            // Store Embeddings
-            Integer chunks = StoreEmbeddings(fileStream,
-                event.getFileExtensions(),
-                event.getUserId().toString(),
-                event.getDocumentVersion(),
-                event.getDocumentId().toString(),
-                event.getFileName()
-            );
+                chunks = storeEmbeddings(fileStream,
+                    event.getFileExtensions(),
+                    event.getUserId().toString(),
+                    event.getDocumentVersion(),
+                    event.getDocumentId().toString(),
+                    event.getFileName()
+                );
+            }
             documentEntity.setChunks(chunks);
-        } catch (RuntimeException e) {
-            documentProcessingStatusService.markFailed(event.getDocumentId());
+        } catch (RuntimeException | IOException e) {
+            documentProcessingStatusService.markFailed(event.getDocumentId(), event.getDocumentVersion());
             log.error("Failed to process Kafka event: {}", event.getEventId(), e);
-            throw e;
+            throw new ProcessFileException("Failed to process Kafka event: " + event.getEventId(), e);
         }
         // Update Database
         documentEntity.setStatus(DocumentStatus.COMPLETED);
@@ -101,7 +105,7 @@ public class DocumentProcessorService {
     /**
      * Store Embeddings in the Vector Store
      */
-    private Integer StoreEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
+    private Integer storeEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
                                     @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
                                     @NonNull String fileName) {
         documentEncoder = documentEncoderFactory.getParser(fileExtension);

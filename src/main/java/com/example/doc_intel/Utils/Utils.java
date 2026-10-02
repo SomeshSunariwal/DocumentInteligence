@@ -24,7 +24,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +37,10 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 @Slf4j
 public class Utils {
 
-    private static final List<FileExtensions> supportedTypes = Arrays.asList(FileExtensions.PDF, FileExtensions.TXT);
+    private static final Map<String, FileExtensions> SUPPORTED_EXTENSIONS = Map.of(
+        "pdf", FileExtensions.PDF,
+        "txt", FileExtensions.TXT
+    );
 
     public static Metadata convertToMetaData(OpenSearchMetaDataDTO openSearchMetaDataDTO) {
         Metadata metadata = new Metadata();
@@ -62,13 +64,8 @@ public class Utils {
             throw new UnSupportedFileException("File format is not proper");
         }
 
-        String extension = filename
-            .substring(filename.lastIndexOf('.') + 1)
-            .toLowerCase();
-        if (!supportedTypes.contains(FileExtensions.valueOf(extension.toUpperCase()))) {
-            return null;
-        }
-        return FileExtensions.valueOf(extension.toUpperCase());
+        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+        return SUPPORTED_EXTENSIONS.get(extension);
     }
 
     public static String getObjectKey(@NonNull String userName,

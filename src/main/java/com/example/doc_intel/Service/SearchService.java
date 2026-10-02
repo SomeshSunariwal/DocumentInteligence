@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -59,7 +58,7 @@ public class SearchService {
 
     public SearchResponseDTO processSearch(@NotBlank String query) {
         String email = Utils.getUserEmail();
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             throw new UserNotExistException("User Not Exist");
         }
@@ -99,7 +98,7 @@ public class SearchService {
         // Document Handling and Create Filter
         if (Objects.nonNull(documentId)) {
             Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
-                .findByDocumentIdAndIsActiveTrue(documentId);
+                .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
 
             if (optionalDocumentEntity.isEmpty()) {
                 throw new NoResultFoundException("Document Not Found");
