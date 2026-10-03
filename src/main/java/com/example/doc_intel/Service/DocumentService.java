@@ -2,6 +2,7 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.DocumentsDTO.GetDocumentResponseDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DocumentProcesser.DocumentProcessor;
@@ -80,7 +81,7 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Not Exist");
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentUploadUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
         List<KafkaEventDTO> kafkaEventDTOS = new ArrayList<>();
@@ -113,7 +114,7 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentDeleteUserNotFound);
         }
 
         // Document Check
@@ -121,7 +122,8 @@ public class DocumentService {
             .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
-            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
+            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId),
+                ErrorCode.DocumentDeleteTargetNotFound);
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
@@ -159,7 +161,7 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentListUserNotFound);
         }
 
         // Documen Check
@@ -223,7 +225,7 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentGetUserNotFound);
         }
 
         // Document Check
@@ -232,7 +234,7 @@ public class DocumentService {
             .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
-            throw new DocumentNotExistException("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found", ErrorCode.DocumentGetTargetNotFound);
         }
 
         DocumentEntity documentEntity = optionalDocumentEntity.get();
@@ -277,7 +279,7 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentSummaryUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
 
@@ -286,7 +288,7 @@ public class DocumentService {
             .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
-            throw new DocumentNotExistException("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found", ErrorCode.DocumentSummaryTargetNotFound);
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
         DocumentVersionEntity version = getLatestVersion(documentId);
@@ -294,7 +296,7 @@ public class DocumentService {
         // AI Config Should Exist.
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
-            throw new AIConfigNotExistException("AI configuration not found");
+            throw new AIConfigNotExistException("AI configuration not found", ErrorCode.DocumentSummaryAIConfigMissing);
         }
         AIConfig aiConfig = aiConfigOptional.get();
         StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);
@@ -363,6 +365,7 @@ public class DocumentService {
     private DocumentVersionEntity getLatestVersion(UUID documentId) {
         return documentVersionsRepository
             .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
-            .orElseThrow(() -> new DocumentNotExistException("Document version not found"));
+            .orElseThrow(() -> new DocumentNotExistException("Document version not found",
+                ErrorCode.DocumentLatestVersionNotFound));
     }
 }

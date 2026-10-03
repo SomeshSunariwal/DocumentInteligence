@@ -1,6 +1,7 @@
 package com.example.doc_intel.Utils;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.CustomRange.RangeFilterImp;
 import com.example.doc_intel.DTO.OpenSearchMetaDataDTO;
 import com.example.doc_intel.Enums.FileExtensions;
@@ -56,12 +57,12 @@ public class Utils {
 
     public static FileExtensions getExtension(MultipartFile file) {
         if (file == null) {
-            throw new UnSupportedFileException("No File Available");
+            throw new UnSupportedFileException("No File Available", ErrorCode.FileMissing);
         }
 
         String filename = file.getOriginalFilename();
         if (filename == null || !filename.contains(".")) {
-            throw new UnSupportedFileException("File format is not proper");
+            throw new UnSupportedFileException("File format is not proper", ErrorCode.FileExtensionMalformed);
         }
 
         String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
@@ -80,7 +81,7 @@ public class Utils {
             Jwt jwt = jwtAuth.getToken();
             return jwt.getSubject();
         }
-        throw new UnAuthenticatedUser("User is not authenticated");
+        throw new UnAuthenticatedUser("User is not authenticated", ErrorCode.RequestUserUnauthenticated);
     }
 
     public static String getFilterField(String key) {
@@ -96,7 +97,8 @@ public class Utils {
             case Constants.META_DOCUMENT_VERSION -> "metadata.documentVersion";
             case Constants.META_DATA_LINE_NUMBER -> "metadata.lineNumber";
             case Constants.META_DATA_PAGE_NUMBER -> "metadata.pageNumber";
-            default -> throw new UnsupportedFilterException("Unsupported metadata field: " + key);
+            default -> throw new UnsupportedFilterException("Unsupported metadata field: " + key,
+                ErrorCode.UnsupportedMetadataFilter);
         };
     }
 

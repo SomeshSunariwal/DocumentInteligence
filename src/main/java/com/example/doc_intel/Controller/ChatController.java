@@ -21,8 +21,8 @@ import lombok.AllArgsConstructor;
 import java.util.UUID;
 
 @Tag(
-        name = "Chat Operation",
-        description = "This API is used to get the stream response"
+    name = "Chat Operation",
+    description = "This API is used to get the stream response"
 )
 @RestController
 @RequestMapping("/api")
@@ -36,17 +36,20 @@ public class ChatController {
      * This method is used to get the stream response of chat messages
      *
      * @param documentId nullable
-     * @param query Non-Nullable
+     * @param query      Non-Nullable
      * @return @ResponseBodyEmitter
      */
     @Operation(
-            summary = "Stream AI chat response",
-            description = "Streams the AI-generated response for the provided question."
+        summary = "Stream AI chat response",
+        description = "Streams the AI-generated response for the provided question."
     )
     @GetMapping("/chat")
-    public ResponseEntity<ResponseBodyEmitter> chat(@RequestParam(name = "documentId") @Nullable UUID documentId,
-            @RequestParam(name = "query") @NotBlank String query) {
-        ResponseBodyEmitter sse = chatService.chat(query, documentId);
+    public ResponseEntity<ResponseBodyEmitter> chat(
+        @RequestParam(name = "query") @NotBlank String query,
+        @RequestParam(required = false, name = "documentId") @Nullable UUID documentId,
+        @RequestParam(required = false, name = "version") @Nullable Integer version
+    ) {
+        ResponseBodyEmitter sse = chatService.chat(query, documentId, version);
         return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).body(sse);
     }
 }

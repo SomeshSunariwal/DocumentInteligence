@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.doc_intel.DTO.EncoderModel;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
@@ -72,7 +73,8 @@ public class DocumentProcessorService {
             .orElseThrow(() -> {
                 log.info("Document with id {} not found", event.getDocumentId());
                 return new DocumentNotExistException(
-                    "Document version not found during Kafka processing: " + event.getDocumentId());
+                    "Document version not found during Kafka processing: " + event.getDocumentId(),
+                    ErrorCode.KafkaDocumentVersionNotFound);
             });
 
         try {
@@ -93,7 +95,8 @@ public class DocumentProcessorService {
         } catch (RuntimeException | IOException e) {
             documentProcessingStatusService.markFailed(event.getDocumentId(), event.getDocumentVersion());
             log.error("Failed to process Kafka event: {}", event.getEventId(), e);
-            throw new ProcessFileException("Failed to process Kafka event: " + event.getEventId(), e);
+            throw new ProcessFileException("Failed to process Kafka event: " + event.getEventId(),
+                ErrorCode.KafkaDocumentProcessingFailed, e);
         }
         // Update Database
         versionEntity.setStatus(DocumentStatus.COMPLETED);
@@ -127,7 +130,7 @@ public class DocumentProcessorService {
             return chunks.size();
         } catch (Exception e) {
             log.error("Failed to store the document : {}", e.getMessage());
-            throw new ProcessFileException("Internal Server Error");
+            throw new ProcessFileException("Internal Server Error", ErrorCode.KafkaEmbeddingCreationFailed);
         }
     }
 }

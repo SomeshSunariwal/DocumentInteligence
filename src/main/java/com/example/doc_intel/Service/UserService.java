@@ -2,6 +2,7 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.DTO.UserDTOs.UserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Exceptions.PSQLDBException;
 import com.example.doc_intel.Exceptions.UnAuthenticatedUser;
@@ -63,7 +64,7 @@ public class UserService {
                 .email(response.getEmail())
                 .build();
         } catch (DataIntegrityViolationException e) {
-            throw new PSQLDBException(e.getMostSpecificCause().getMessage());
+            throw new PSQLDBException(e.getMostSpecificCause().getMessage(), ErrorCode.UserDatabaseOperationFailed);
         }
     }
 
@@ -78,7 +79,7 @@ public class UserService {
 
         Optional<UserEntity> optionalResponse = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalResponse.isEmpty()) {
-            throw new UserNotExistException("User Not Found");
+            throw new UserNotExistException("User Not Found", ErrorCode.UserDeleteTargetNotFound);
         }
         UserEntity userEntity = optionalResponse.get();
         UserEntity deletedUser = userRepository.deleteByEmail(userEntity.getEmail());
@@ -102,12 +103,12 @@ public class UserService {
     public UserResponseDTO softDeleteUser(@NonNull String email) {
         String authUserEmail = Utils.getUserEmail();
         if (!authUserEmail.equals(email)) {
-            throw new UnAuthenticatedUser("You are not the owner of Email");
+            throw new UnAuthenticatedUser("You are not the owner of Email", ErrorCode.UserEmailOwnershipMismatch);
         }
         // Convert Input Request Object to DataBase
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Found");
+            throw new UserNotExistException("User Not Found", ErrorCode.UserSoftDeleteTargetNotFound);
         }
 
         UserEntity userEntity = optionalUserEntity.get();

@@ -1,7 +1,8 @@
 package com.example.doc_intel.Exceptions;
 
-public class PSQLDBException extends RuntimeException {
-    public PSQLDBException(String message) {
-        super(message);
+public class PSQLDBException extends CodedRuntimeException {
+
+    public PSQLDBException(String message, int errorCode) {
+        super(message, errorCode);
     }
 }

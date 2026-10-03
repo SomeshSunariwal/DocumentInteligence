@@ -1,11 +1,14 @@
 package com.example.doc_intel.Exceptions.MinIOExceptions;
 
-public class MinIOObjectPutException extends RuntimeException {
-    public MinIOObjectPutException(String message) {
-        super(message);
+import com.example.doc_intel.Exceptions.CodedRuntimeException;
+
+public class MinIOObjectPutException extends CodedRuntimeException {
+
+    public MinIOObjectPutException(String message, int errorCode) {
+        super(message, errorCode);
     }
 
-    public MinIOObjectPutException(String message, Throwable cause) {
-        super(message, cause);
+    public MinIOObjectPutException(String message, int errorCode, Throwable cause) {
+        super(message, errorCode, cause);
     }
 }

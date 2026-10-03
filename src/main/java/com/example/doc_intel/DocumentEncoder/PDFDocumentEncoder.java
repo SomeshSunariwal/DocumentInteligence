@@ -3,6 +3,7 @@ package com.example.doc_intel.DocumentEncoder;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.EncoderModel;
 import com.example.doc_intel.Exceptions.FileReadError;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
@@ -78,11 +79,11 @@ public class PDFDocumentEncoder implements DocumentEncoder {
 
         } catch (IOException exception) {
             log.error("Error while reading PDF: {}", encoderModel.getFileName(), exception);
-            throw new FileReadError("Error While Reading PDF File");
+            throw new FileReadError("Error While Reading PDF File", ErrorCode.PdfFileReadFailed);
 
         } catch (Exception exception) {
             log.error("Unexpected error while encoding PDF: {}", encoderModel.getFileName(), exception);
-            throw new InternalServerErrorException("Internal Server Error");
+            throw new InternalServerErrorException("Internal Server Error", ErrorCode.DocumentParserFailed);
         }
     }
 

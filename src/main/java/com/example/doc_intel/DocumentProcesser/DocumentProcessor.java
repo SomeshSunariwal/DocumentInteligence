@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.Entity.DocumentEntity;
@@ -62,24 +63,26 @@ public class DocumentProcessor {
                                                      @NonNull List<KafkaEventDTO> kafkaEventDTOS) {
         FileExtensions fileExtension = Utils.getExtension(file);
         if (fileExtension == null) {
-            throw new UnSupportedFileException("File Type not support");
+            throw new UnSupportedFileException("File Type not support", ErrorCode.DocumentUpdateUnsupportedFile);
         }
 
         Optional<UserEntity> userOptional = userRepository.findByEmailAndIsActiveTrue(email);
         if (userOptional.isEmpty()) {
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentProcessorUserNotFound);
         }
         Optional<DocumentEntity> documentOptional = documentsRepository
             .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (documentOptional.isEmpty()) {
-            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
+            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId),
+                ErrorCode.DocumentUpdateTargetNotFound);
         }
 
         UserEntity user = userOptional.get();
         DocumentEntity document = documentOptional.get();
         DocumentVersionEntity previousVersion = documentVersionsRepository
             .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
-            .orElseThrow(() -> new DocumentNotExistException("Document version not found"));
+            .orElseThrow(() -> new DocumentNotExistException("Document version not found",
+                ErrorCode.DocumentUpdateVersionNotFound));
 
         String fileName = file.getOriginalFilename() == null
             ? "Document.%s".formatted(fileExtension) : file.getOriginalFilename();
@@ -115,7 +118,7 @@ public class DocumentProcessor {
                                                    List<KafkaEventDTO> events) {
         FileExtensions fileExtension = Utils.getExtension(file);
         if (fileExtension == null) {
-            throw new UnSupportedFileException("File Type not support");
+            throw new UnSupportedFileException("File Type not support", ErrorCode.DocumentUploadUnsupportedFile);
         }
         String fileName = file.getOriginalFilename() == null
             ? "Document.%s".formatted(fileExtension) : file.getOriginalFilename();
