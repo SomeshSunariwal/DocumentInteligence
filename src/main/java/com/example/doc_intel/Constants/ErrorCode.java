@@ -75,5 +75,8 @@ public final class ErrorCode {
     // Request and unexpected errors: 1700-1799
     public static final Integer InvalidRequest = 1700;
     public static final Integer BadCredentials = 1701;
+    public static final Integer InvalidJwtToken = 1702;
+    public static final Integer AuthenticationRequired = 1703;
+    public static final Integer AccessDenied = 1704;
     public static final Integer UnexpectedError = 1799;
 }

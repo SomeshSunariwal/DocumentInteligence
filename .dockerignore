@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+target
+*.iml
+compose.override.yml
+.env
+.env.*
+!.env.example

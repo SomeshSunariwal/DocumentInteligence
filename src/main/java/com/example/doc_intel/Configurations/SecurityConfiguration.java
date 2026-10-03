@@ -1,5 +1,7 @@
 package com.example.doc_intel.Configurations;
 
+import com.example.doc_intel.Constants.ErrorCode;
+import com.example.doc_intel.DTO.ExceptionDTO;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,8 +15,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -22,13 +28,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.io.IOException;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   AuthenticationEntryPoint jsonAuthenticationEntryPoint,
+                                                   AccessDeniedHandler jsonAccessDeniedHandler) {
 
         http.sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -39,6 +49,7 @@ public class SecurityConfiguration {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/users/register",
+                    "/actuator/health",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
@@ -47,11 +58,15 @@ public class SecurityConfiguration {
                 // Everything else requires authentication
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(jsonAuthenticationEntryPoint)
+                .accessDeniedHandler(jsonAccessDeniedHandler))
 
             // Spring Security handles Bearer JWT
             .oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwt -> {
-                }));
+                }).authenticationEntryPoint(jsonAuthenticationEntryPoint)
+                    .accessDeniedHandler(jsonAccessDeniedHandler));
 
         return http.build();
     }
@@ -70,6 +85,32 @@ public class SecurityConfiguration {
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint jsonAuthenticationEntryPoint() {
+        return (request, response, exception) -> {
+            boolean invalidToken = exception instanceof OAuth2AuthenticationException;
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            writeErrorResponse(response, new ExceptionDTO(
+                invalidToken ? ErrorCode.InvalidJwtToken : ErrorCode.AuthenticationRequired,
+                invalidToken ? "Bearer token is invalid or expired" : "Authentication is required"));
+        };
+    }
+
+    @Bean
+    public AccessDeniedHandler jsonAccessDeniedHandler() {
+        return (request, response, exception) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            writeErrorResponse(response, new ExceptionDTO(ErrorCode.AccessDenied, "Access is denied"));
+        };
+    }
+
+    private void writeErrorResponse(HttpServletResponse response, ExceptionDTO error) throws IOException {
+        response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write("{\"errorCode\":%d,\"message\":\"%s\"}"
+            .formatted(error.getErrorCode(), error.getMessage()));
     }
 
     @Bean
