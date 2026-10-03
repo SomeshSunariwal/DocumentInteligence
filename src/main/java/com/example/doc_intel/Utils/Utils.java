@@ -1,6 +1,7 @@
 package com.example.doc_intel.Utils;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.CustomRange.RangeFilterImp;
 import com.example.doc_intel.DTO.OpenSearchMetaDataDTO;
 import com.example.doc_intel.Enums.FileExtensions;
@@ -24,7 +25,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +38,10 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 @Slf4j
 public class Utils {
 
-    private static final List<FileExtensions> supportedTypes = Arrays.asList(FileExtensions.PDF, FileExtensions.TXT);
+    private static final Map<String, FileExtensions> SUPPORTED_EXTENSIONS = Map.of(
+        "pdf", FileExtensions.PDF,
+        "txt", FileExtensions.TXT
+    );
 
     public static Metadata convertToMetaData(OpenSearchMetaDataDTO openSearchMetaDataDTO) {
         Metadata metadata = new Metadata();
@@ -54,21 +57,16 @@ public class Utils {
 
     public static FileExtensions getExtension(MultipartFile file) {
         if (file == null) {
-            throw new UnSupportedFileException("No File Available");
+            throw new UnSupportedFileException("No File Available", ErrorCode.FileMissing);
         }
 
         String filename = file.getOriginalFilename();
         if (filename == null || !filename.contains(".")) {
-            throw new UnSupportedFileException("File format is not proper");
+            throw new UnSupportedFileException("File format is not proper", ErrorCode.FileExtensionMalformed);
         }
 
-        String extension = filename
-            .substring(filename.lastIndexOf('.') + 1)
-            .toLowerCase();
-        if (!supportedTypes.contains(FileExtensions.valueOf(extension.toUpperCase()))) {
-            return null;
-        }
-        return FileExtensions.valueOf(extension.toUpperCase());
+        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+        return SUPPORTED_EXTENSIONS.get(extension);
     }
 
     public static String getObjectKey(@NonNull String userName,
@@ -83,7 +81,7 @@ public class Utils {
             Jwt jwt = jwtAuth.getToken();
             return jwt.getSubject();
         }
-        throw new UnAuthenticatedUser("User is not authenticated");
+        throw new UnAuthenticatedUser("User is not authenticated", ErrorCode.RequestUserUnauthenticated);
     }
 
     public static String getFilterField(String key) {
@@ -99,7 +97,8 @@ public class Utils {
             case Constants.META_DOCUMENT_VERSION -> "metadata.documentVersion";
             case Constants.META_DATA_LINE_NUMBER -> "metadata.lineNumber";
             case Constants.META_DATA_PAGE_NUMBER -> "metadata.pageNumber";
-            default -> throw new UnsupportedFilterException("Unsupported metadata field: " + key);
+            default -> throw new UnsupportedFilterException("Unsupported metadata field: " + key,
+                ErrorCode.UnsupportedMetadataFilter);
         };
     }
 

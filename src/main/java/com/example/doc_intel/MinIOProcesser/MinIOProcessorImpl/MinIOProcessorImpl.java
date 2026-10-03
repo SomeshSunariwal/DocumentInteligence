@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.doc_intel.Client.MinIOClientProvider;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
@@ -44,7 +45,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build());
         } catch (Exception e) {
             log.error("Failed to upload object to MinIO. objectKey={}", objectKey, e);
-            throw new MinIOObjectPutException("Exception: {}" + e.getMessage());
+            throw new MinIOObjectPutException("Unable to upload object", ErrorCode.MinioObjectUploadFailed, e);
         }
     }
 
@@ -59,8 +60,8 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build()
             );
         } catch (Exception e) {
-            log.info("Exception During Getting Object: {}", e.getMessage());
-            throw new InternalServerErrorException("Internal Server Exception");
+            log.error("Failed to retrieve object from MinIO. objectKey={}", objectKey, e);
+            throw new InternalServerErrorException("Unable to retrieve object", ErrorCode.MinioObjectReadFailed, e);
         }
     }
 
@@ -82,8 +83,8 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .build()
             );
         } catch (Exception e) {
-            log.info("Exception During Getting Presigned Object URL: {}", e.getMessage());
-            throw new InternalServerErrorException("Internal Server Exception");
+            log.error("Failed to generate MinIO presigned URL. objectKey={}", objectKey, e);
+            throw new InternalServerErrorException("Unable to generate document URL", ErrorCode.MinioPresignedUrlFailed, e);
         }
     }
 }

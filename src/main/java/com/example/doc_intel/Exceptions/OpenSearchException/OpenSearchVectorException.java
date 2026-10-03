@@ -2,9 +2,9 @@ package com.example.doc_intel.Exceptions.OpenSearchException;
 
 import com.example.doc_intel.Exceptions.CodedRuntimeException;
 
-public class OpenSearchIndexingException extends CodedRuntimeException {
+public class OpenSearchVectorException extends CodedRuntimeException {
 
-    public OpenSearchIndexingException(String message, int errorCode) {
+    public OpenSearchVectorException(String message, int errorCode) {
         super(message, errorCode);
     }
 }

@@ -2,26 +2,27 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
-import com.example.doc_intel.DTO.ChatModel.ChatStreamResponse;
+import com.example.doc_intel.Constants.ErrorCode;
+import com.example.doc_intel.DTO.DocumentsDTO.GetDocumentResponseDTO;
+import com.example.doc_intel.DTO.KafkaEventDTO;
+import com.example.doc_intel.DocumentProcesser.DocumentProcessor;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentSummeryResponse;
-import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
 import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.ChatDataType;
 import com.example.doc_intel.Enums.DocumentStatus;
-import com.example.doc_intel.Enums.FileExtensions;
-import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
-import com.example.doc_intel.Exceptions.UnAuthenticatedUser;
-import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.segment.TextSegment;
@@ -30,19 +31,19 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.filter.Filter;
-import io.minio.ObjectWriteResponse;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,6 +60,8 @@ public class DocumentService {
 
     private final DocumentsRepository documentsRepository;
 
+    private final DocumentVersionsRepository documentVersionsRepository;
+
     private final PublisherService publisherService;
 
     private final AIConfigRepository aiConfigRepository;
@@ -67,102 +70,38 @@ public class DocumentService {
 
     private final EmbeddingRequestHandler embeddingRequestHandler;
 
+    private final DocumentProcessor documentProcessor;
+
     /**
      * Upload File to MinIO and Store Embedding in the Vector Store
      */
-    @Transactional(propagation = Propagation.REQUIRED)
     public List<DocumentResponseDTO> uploadFile(@NonNull List<MultipartFile> files) {
         //---------------- User Check
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Not Exist");
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentUploadUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
-        return files.stream()
-            .map(file -> processDocument(userEntity, file))
-            .toList();
+        List<KafkaEventDTO> kafkaEventDTOS = new ArrayList<>();
+        List<DocumentResponseDTO> documentResponseDTOS = documentProcessor.processUploadDocuments(userEntity, files,
+            kafkaEventDTOS);
+        kafkaEventDTOS.forEach(publisherService::publishDocument);
+        return documentResponseDTOS;
     }
 
     /**
      * Update File to MinIO and Store Embedding in the Vector Store
      */
-    @Transactional
     public DocumentResponseDTO updateDocument(@NonNull UUID documentId,
                                               @NonNull MultipartFile file) {
         String email = Utils.getUserEmail();
-        FileExtensions fileExtension = Utils.getExtension(file);
-        if (Objects.isNull(fileExtension)) {
-            throw new UnSupportedFileException("File Type not support");
-        }
-        // User Check
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
-        if (optionalUserEntity.isEmpty()) {
-            log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
-        }
-        UserEntity userEntity = optionalUserEntity.get();
-
-        // Documen Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
-        if (optionalDocumentEntity.isEmpty()) {
-            log.info("Document Id: {} not exist", documentId);
-            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
-        }
-        DocumentEntity documentEntity = optionalDocumentEntity.get();
-
-        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
-            file.getOriginalFilename();
-        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
-
-        // Updated Document in the Table
-        String objectKey = documentEntity.getObjectKey();
-
-        // Upload File to MinIO
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Updated to : {}", objectWriteResponse.versionId());
-
-        // Updated Document in the Table
-        documentEntity.setFileName(fileName);
-        documentEntity.setFileSize(file.getSize());
-        documentEntity.setContentType(contentType);
-        documentEntity.setUpdateAt(LocalDateTime.now());
-        documentEntity.setUpdatedBy(email);
-        documentEntity.setStatus(DocumentStatus.UPLOADED);
-        documentEntity.setVersion(documentEntity.getVersion() + 1);
-        documentEntity.setChunks(0);
-        documentEntity.setFileExtensions(fileExtension);
-        documentEntity.setMinIOVersionId(objectWriteResponse.versionId());
-
-        // Create Kafka Event
-        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
-            .eventId(UUID.randomUUID())
-            .documentId(documentId)
-            .userId(userEntity.getUserId())
-            .objectKey(objectKey)
-            .fileName(documentEntity.getFileName())
-            .fileExtensions(fileExtension)
-            .documentVersion(documentEntity.getVersion())
-            .minIOVersion(objectWriteResponse.versionId())
-            .build();
-
-        // Publish Document Event
-        publisherService.publishDocument(kafkaEventDTO);
-
-        return DocumentResponseDTO.builder()
-            .version(documentEntity.getVersion())
-            .URI(null)
-            .documentId(documentEntity.getDocumentId())
-            .fileName(file.getOriginalFilename())
-            .fileSize(file.getSize())
-            .fileExtensions(fileExtension)
-            .chunks(documentEntity.getChunks())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .build();
+        List<KafkaEventDTO> kafkaEventDTO = new ArrayList<>();
+        DocumentResponseDTO documentResponseDTO = documentProcessor.processDocumentUpdate(email, documentId, file,
+            kafkaEventDTO);
+        publisherService.publishDocument(kafkaEventDTO.getFirst());
+        return documentResponseDTO;
     }
 
     /**
@@ -175,31 +114,39 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentDeleteUserNotFound);
         }
 
         // Document Check
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("Document Id: {} not exist", documentId);
-            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId));
+            throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId),
+                ErrorCode.DocumentDeleteTargetNotFound);
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
+        /**
+         * TODO: Currently we are only deleting the latest version
+         * 1. we can pass the version Id to delete particular version
+         * 2. if versionId not present then delete all the version
+         */
+        DocumentVersionEntity version = getLatestVersion(documentId);
+
         // Soft Deleting Document in the Table
         documentEntity.setIsActive(false);
-        documentEntity.setStatus(DocumentStatus.DELETED);
+        version.setStatus(DocumentStatus.DELETED);
 
         return DocumentResponseDTO.builder()
-            .version(documentEntity.getVersion())
+            .version(version.getDocumentVersion())
             .URI(null)
             .documentId(documentEntity.getDocumentId())
-            .chunks(documentEntity.getChunks())
-            .fileExtensions(documentEntity.getFileExtensions())
-            .fileName(documentEntity.getFileName())
-            .fileSize(documentEntity.getFileSize())
-            .createdAt(documentEntity.getCreatedAt())
+            .chunks(version.getChunksCount())
+            .fileExtensions(version.getFileExtensions())
+            .fileName(version.getFileName())
+            .fileSize(version.getFileSize())
+            .createdAt(version.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .build();
     }
@@ -208,40 +155,53 @@ public class DocumentService {
      * Get All Documents of the User
      */
     @Transactional
-    public UserDocumentsResponseDTO getUserAllDocuments() {
+    public UserDocumentsResponseDTO getUserAllDocuments(int page) {
         String email = Utils.getUserEmail();
         // User Check
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentListUserNotFound);
         }
 
         // Documen Check
         UserEntity userEntity = optionalUserEntity.get();
-        List<DocumentEntity> documentEntity = documentsRepository.findByUser_EmailAndIsActiveTrue(email);
+        Page<DocumentEntity> documentPage = documentsRepository.findByUser_EmailAndIsActiveTrue(email,
+            PageRequest.of(page, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
+        List<DocumentEntity> documentEntity = documentPage.getContent();
         if (documentEntity.isEmpty()) {
             log.info("No Documents Found");
         }
 
-        List<DocumentResponseDTO> documents = documentEntity.stream().map(
+        List<GetDocumentResponseDTO> documents = documentEntity.stream().map(
             document -> {
-                // get Persistence URI;
-                String url = minIOProcessor.getPresignedObjectUrl(document.getObjectKey(), document.getContentType(),
-                    document.getFileName());
+                List<DocumentVersionEntity> documentVersions = getDocumentVersions(document.getDocumentId());
+                if (documentVersions.isEmpty()) {
+                    return null;
+                }
+                List<DocumentResponseDTO> documentResponseDTOS = documentVersions.stream().map(
+                    version -> {
+                        // get Persistence URI;
+                        String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(),
+                            version.getContentType(),
+                            version.getFileName());
 
-                return DocumentResponseDTO.builder()
-                    .fileName(document.getFileName())
-                    .fileSize(document.getFileSize())
-                    .fileExtensions(document.getFileExtensions())
-                    .documentId(document.getDocumentId())
-                    .URI(url)
-                    .version(document.getVersion())
-                    .createdAt(document.getCreatedAt())
-                    .updatedAt(document.getUpdateAt())
-                    .status(document.getStatus())
-                    .chunks(document.getChunks())
-                    .build();
+                        return DocumentResponseDTO.builder()
+                            .fileName(version.getFileName())
+                            .fileSize(version.getFileSize())
+                            .fileExtensions(version.getFileExtensions())
+                            .documentId(document.getDocumentId())
+                            .URI(url)
+                            .version(version.getDocumentVersion())
+                            .createdAt(version.getCreatedAt())
+                            .updatedAt(document.getUpdateAt())
+                            .status(version.getStatus())
+                            .chunks(version.getChunksCount())
+                            .build();
+                    }
+                ).toList();
+                return GetDocumentResponseDTO.builder().documentId(document.getDocumentId())
+                    .documentVersions(documentResponseDTOS).build();
             }).toList();
 
         log.info("Documents Found: {}", documents.size());
@@ -259,113 +219,54 @@ public class DocumentService {
      * Get Document of the User with DocumentId
      */
     @Transactional
-    public DocumentResponseDTO getDocument(@NonNull UUID documentId) {
+    public GetDocumentResponseDTO getDocument(@NonNull UUID documentId) {
         String email = Utils.getUserEmail();
         // User Check
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentGetUserNotFound);
         }
 
         // Document Check
         UserEntity userEntity = optionalUserEntity.get();
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
-            throw new DocumentNotExistException("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found", ErrorCode.DocumentGetTargetNotFound);
         }
 
         DocumentEntity documentEntity = optionalDocumentEntity.get();
-        String url = minIOProcessor.getPresignedObjectUrl(documentEntity.getObjectKey(),
-            documentEntity.getContentType(), documentEntity.getFileName());
-
-        return DocumentResponseDTO.builder()
-            .fileName(documentEntity.getFileName())
-            .fileSize(documentEntity.getFileSize())
-            .fileExtensions(documentEntity.getFileExtensions())
-            .documentId(documentEntity.getDocumentId())
-            .URI(url)
-            .version(documentEntity.getVersion())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .chunks(documentEntity.getChunks())
-            .build();
-    }
-
-    private DocumentResponseDTO processDocument(@NonNull UserEntity userEntity, @NonNull MultipartFile file) {
-        FileExtensions fileExtension = Utils.getExtension(file);
-        if (Objects.isNull(fileExtension)) {
-            throw new UnSupportedFileException("File Type not support");
+        List<DocumentVersionEntity> documentVersions = getDocumentVersions(documentId);
+        if (documentVersions.isEmpty()) {
+            return GetDocumentResponseDTO.builder().documentId(documentEntity.getDocumentId()).documentVersions(null)
+                .build();
         }
 
-        String fileName = Objects.isNull(file.getOriginalFilename()) ? "Document.%s".formatted(fileExtension) :
-            file.getOriginalFilename();
-        String contentType = Objects.isNull(file.getContentType()) ? "application/octet-stream" : file.getContentType();
+        List<DocumentResponseDTO> documentResponseDTOS = documentVersions.stream().map(
+            documentVersionEntity -> {
+                String url = minIOProcessor.getPresignedObjectUrl(documentVersionEntity.getObjectKey(),
+                    documentVersionEntity.getContentType(), documentVersionEntity.getFileName());
+                return DocumentResponseDTO.builder()
+                    .fileName(documentVersionEntity.getFileName())
+                    .fileSize(documentVersionEntity.getFileSize())
+                    .fileExtensions(documentVersionEntity.getFileExtensions())
+                    .documentId(documentEntity.getDocumentId())
+                    .URI(url)
+                    .version(documentVersionEntity.getDocumentVersion())
+                    .createdAt(documentVersionEntity.getCreatedAt())
+                    .updatedAt(documentEntity.getUpdateAt())
+                    .status(documentVersionEntity.getStatus())
+                    .chunks(documentVersionEntity.getChunksCount())
+                    .build();
+            }
+        ).toList();
 
-        UUID uuid = UUID.randomUUID();
-        String objectKey = Utils.getObjectKey(userEntity.getUsername(), uuid, fileName);
-
-        // Upload File to MinIO DataBase
-        ObjectWriteResponse objectWriteResponse = minIOProcessor.putObject(file, objectKey);
-        log.info("Version Created with : {}", objectWriteResponse.versionId());
-
-
-        //---------------------- Placed Document Object Into Table
-        DocumentEntity documentEntity = DocumentEntity.builder()
-            .documentId(uuid)
-            .fileName(file.getOriginalFilename())
-            .objectKey(objectKey)
-            .bucketName(Constants.MINIO_BUCKET_NAME)
-            .contentType(contentType)
-            .fileSize(file.getSize())
-            .fileExtensions(fileExtension)
-            .isActive(true)
-            .version(1)
-            .minIOVersionId(objectWriteResponse.versionId())
-            .status(DocumentStatus.UPLOADED)
-            .user(userEntity)
-            .createdAt(LocalDateTime.now())
-            .createdBy(userEntity.getUsername())
-            .updateAt(LocalDateTime.now())
-            .updatedBy(userEntity.getUsername())
-            .chunks(0)
-            .build();
-
-        //  Update Document Entity with Number of Chunks
-        DocumentEntity documentEntityResponse = documentsRepository.save(documentEntity);
-
-        // Create Kafka Event
-        KafkaEventDTO kafkaEventDTO = KafkaEventDTO.builder()
-            .eventId(uuid)
-            .documentId(uuid)
-            .userId(userEntity.getUserId())
-            .objectKey(objectKey)
-            .fileName(documentEntity.getFileName())
-            .fileExtensions(fileExtension)
-            .documentVersion(documentEntity.getVersion())
-            .minIOVersion(objectWriteResponse.versionId())
-            .build();
-
-        // Publish Document Event
-        publisherService.publishDocument(kafkaEventDTO);
-
-        return DocumentResponseDTO.builder()
-            .version(documentEntityResponse.getVersion())
-            .URI(null)
-            .documentId(documentEntityResponse.getDocumentId())
-            .fileName(file.getOriginalFilename())
-            .fileSize(documentEntity.getFileSize())
-            .fileExtensions(fileExtension)
-            .chunks(documentEntityResponse.getChunks())
-            .createdAt(documentEntity.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .build();
+        return GetDocumentResponseDTO.builder()
+            .documentId(documentEntity.getDocumentId())
+            .documentVersions(documentResponseDTOS).build();
     }
-
 
     /**
      * Get Document Summery of the User with DocumentId
@@ -378,23 +279,24 @@ public class DocumentService {
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
             log.info("User Email: {} not exist", email);
-            throw new UserNotExistException("User not Exist");
+            throw new UserNotExistException("User not Exist", ErrorCode.DocumentSummaryUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
 
         // Document should also exist
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository.findByDocumentIdAndIsActiveTrue(
-            documentId);
+        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
+            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (optionalDocumentEntity.isEmpty()) {
             log.info("No Documents Found");
-            throw new DocumentNotExistException("No Documents Found");
+            throw new DocumentNotExistException("No Documents Found", ErrorCode.DocumentSummaryTargetNotFound);
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
+        DocumentVersionEntity version = getLatestVersion(documentId);
 
         // AI Config Should Exist.
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
-            throw new UnAuthenticatedUser("No Config Found");
+            throw new AIConfigNotExistException("AI configuration not found", ErrorCode.DocumentSummaryAIConfigMissing);
         }
         AIConfig aiConfig = aiConfigOptional.get();
         StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);
@@ -404,7 +306,7 @@ public class DocumentService {
 
         // Document Handling and Create Filter for the latest document
         filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(version.getDocumentVersion()));
 
         EmbeddingSearchResult<TextSegment> searchResultContext = embeddingRequestHandler.makeFilterRequest(filter);
 
@@ -453,5 +355,17 @@ public class DocumentService {
             }
         );
         return emitter;
+    }
+
+    private List<DocumentVersionEntity> getDocumentVersions(UUID documentId) {
+        return documentVersionsRepository
+            .findByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId);
+    }
+
+    private DocumentVersionEntity getLatestVersion(UUID documentId) {
+        return documentVersionsRepository
+            .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+            .orElseThrow(() -> new DocumentNotExistException("Document version not found",
+                ErrorCode.DocumentLatestVersionNotFound));
     }
 }

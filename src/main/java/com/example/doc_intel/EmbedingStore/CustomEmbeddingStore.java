@@ -2,10 +2,11 @@ package com.example.doc_intel.EmbedingStore;
 
 import com.example.doc_intel.Client.OpenSearchClientProvider;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.CustomRange.RangeFilter;
 import com.example.doc_intel.Exceptions.InternalServerErrorException;
 import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
-import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectoreException;
+import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectorException;
 import com.example.doc_intel.Exceptions.OpenSearchException.UnsupportedFilterException;
 import com.example.doc_intel.Utils.Utils;
 import com.example.doc_intel.DTO.EmbeddingDocument;
@@ -128,10 +129,12 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment>, Custom
 
         } catch (IOException e) {
             log.error("OpenSearch vector search failed", e);
-            throw new OpenSearchVectoreException("OpenSearch vector search failed");
+            throw new OpenSearchVectorException("OpenSearch vector search failed",
+                ErrorCode.OpenSearchVectorSearchFailed);
         } catch (Exception e) {
             log.error("OpenSearch failed", e);
-            throw new InternalServerErrorException("OpenSearch failed");
+            throw new InternalServerErrorException("OpenSearch failed",
+                ErrorCode.OpenSearchVectorSearchUnexpectedError);
         }
         return new EmbeddingSearchResult<>(matches);
     }
@@ -151,7 +154,8 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment>, Custom
                     .index(Constants.OPEN_SEARCH_INDEX_NAME)
                     .document(document));
         } catch (IOException e) {
-            throw new OpenSearchIndexingException("Failed to index embedding");
+            throw new OpenSearchIndexingException("Failed to index embedding",
+                ErrorCode.OpenSearchEmbeddingIndexFailed);
         }
     }
 
@@ -187,10 +191,12 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment>, Custom
             return new EmbeddingSearchResult<>(matches);
         } catch (IOException e) {
             log.error("OpenSearch filter search failed", e);
-            throw new OpenSearchVectoreException("OpenSearch filter search failed");
+            throw new OpenSearchVectorException("OpenSearch filter search failed",
+                ErrorCode.OpenSearchFilterSearchFailed);
         } catch (Exception e) {
             log.error("OpenSearch failed", e);
-            throw new InternalServerErrorException("OpenSearch failed");
+            throw new InternalServerErrorException("OpenSearch failed",
+                ErrorCode.OpenSearchFilterSearchUnexpectedError);
         }
     }
 
@@ -243,6 +249,6 @@ public class CustomEmbeddingStore implements EmbeddingStore<TextSegment>, Custom
                 .build();
         }
 
-        throw new UnsupportedFilterException("Internal Server Error");
+        throw new UnsupportedFilterException("Internal Server Error", ErrorCode.OpenSearchFilterConversionFailed);
     }
 }

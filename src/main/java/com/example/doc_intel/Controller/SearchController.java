@@ -52,9 +52,11 @@ public class SearchController {
      */
     @GetMapping("/users/chat")
     public ResponseEntity<AISearchResponseDTO> postAISearch(
-        @RequestParam(name = "documentId") @Nullable UUID documentId,
-        @RequestParam(name = "query") @NotBlank String query) {
-        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(documentId, query);
+        @RequestParam(name = "query") @NotBlank String query,
+        @RequestParam(required = false, name = "documentId") @Nullable UUID documentId,
+        @RequestParam(required = false, name = "version") @Nullable Integer version
+    ) {
+        AISearchResponseDTO searchResponseDTO = searchService.processAISearch(query, documentId, version);
         return ResponseEntity.ok().body(searchResponseDTO);
     }
 }

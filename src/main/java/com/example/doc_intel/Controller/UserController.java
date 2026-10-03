@@ -1,6 +1,5 @@
 package com.example.doc_intel.Controller;
 
-import com.example.doc_intel.DTO.UserDTOs.DeleteUserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserRequestDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserResponseDTO;
 import com.example.doc_intel.Service.UserService;
@@ -12,12 +11,12 @@ import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 
 /**
@@ -52,8 +51,8 @@ public class UserController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping
-    public ResponseEntity<UserResponseDTO> deleteUser(@Valid @RequestBody DeleteUserRequestDTO deleteUserRequestDTO) {
-        UserResponseDTO userResponseDTO = userService.deleteUser(deleteUserRequestDTO);
+    public ResponseEntity<UserResponseDTO> deleteUser() {
+        UserResponseDTO userResponseDTO = userService.deleteUser();
         return ResponseEntity.ok().body(userResponseDTO);
     }
 
@@ -66,8 +65,8 @@ public class UserController {
         description = "This will soft delete the user"
     )
     @SecurityRequirement(name = "bearerAuth")
-    @DeleteMapping("/delete")
-    public ResponseEntity<UserResponseDTO> deleteUser(@Email @PathVariable String email) {
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity<UserResponseDTO> softDeleteUser(@Email @PathVariable String email) {
         UserResponseDTO userResponseDTO = userService.softDeleteUser(email);
         return ResponseEntity.ok().body(userResponseDTO);
     }

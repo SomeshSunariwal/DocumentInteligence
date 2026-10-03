@@ -1,6 +1,7 @@
 package com.example.doc_intel.Client;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOBucketCreationException;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
@@ -23,7 +24,6 @@ public class MinIOClientProvider implements Client<MinioClient> {
         @Value(("${MINIO.ROOT.USER}")) String ACCESS_KEY,
         @Value(("${MINIO.ROOT.PASSWORD}")) String SECRET
     ) {
-        log.info("Endpoint: {}, Access: {}, Secret: {}", ENDPOINT, ACCESS_KEY, SECRET);
         this.client = MinioClient.builder()
             .endpoint(ENDPOINT)
             .credentials(ACCESS_KEY, SECRET)
@@ -64,7 +64,8 @@ public class MinIOClientProvider implements Client<MinioClient> {
                 log.info("Bucket: {} already exists.", Constants.MINIO_BUCKET_NAME);
             }
         } catch (Exception e) {
-            throw new MinIOBucketCreationException("Exception: " + e.getMessage());
+            throw new MinIOBucketCreationException("Exception: " + e.getMessage(),
+                ErrorCode.MinioBucketInitializationFailed);
         }
     }
 }

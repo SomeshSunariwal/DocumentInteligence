@@ -1,6 +1,5 @@
 package com.example.doc_intel.Service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -10,13 +9,16 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
+import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
@@ -59,18 +61,19 @@ public class ChatService {
 
     private final DocumentsRepository documentsRepository;
 
-    public ResponseBodyEmitter chat(@NotBlank String query, @Nullable UUID documentId) {
+    private final DocumentVersionsRepository documentVersionsRepository;
+
+    public ResponseBodyEmitter chat(@NotBlank String query, @Nullable UUID documentId, @Nullable Integer version) {
         String email = Utils.getUserEmail();
-        Optional<UserEntity> optionalUser = userRepository.findByEmail(email);
+        Optional<UserEntity> optionalUser = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUser.isEmpty()) {
-            throw new UnAuthenticatedUser("Unauthenticated user");
+            throw new UnAuthenticatedUser("Unauthenticated user", ErrorCode.ChatUserUnauthenticated);
         }
         UserEntity userEntity = optionalUser.get();
 
-
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
         if (aiConfigOptional.isEmpty()) {
-            throw new UnAuthenticatedUser("No Config Found");
+            throw new AIConfigNotExistException("AI configuration not found", ErrorCode.ChatAIConfigMissing);
         }
         AIConfig aiConfig = aiConfigOptional.get();
         StreamingChatModel chatModel = streamChatModelClient.giveMeModel(aiConfig);
@@ -81,22 +84,31 @@ public class ChatService {
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
         if (Objects.nonNull(documentId)) {
             Optional<DocumentEntity> optionalDocumentEntity =
-                documentsRepository.findByDocumentIdAndIsActiveTrue(documentId);
+                documentsRepository.findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
             if (optionalDocumentEntity.isEmpty()) {
-                throw new NoResultFoundException("Document Not Found");
+                throw new NoResultFoundException("Document Not Found", ErrorCode.ChatTargetNotFound);
             }
-            DocumentEntity documentEntity = optionalDocumentEntity.get();
+            int latestVersion = 0;
+            // If no version is provided in the request then latest version will be picked
+            DocumentVersionEntity documentVersionEntity;
+            if (Objects.isNull(version)) {
+                documentVersionEntity = documentVersionsRepository
+                    .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+                    .orElseThrow(() -> new NoResultFoundException("There are no document versions",
+                        ErrorCode.ChatLatestVersionNotFound));
+            } else {
+                documentVersionEntity = documentVersionsRepository
+                    .findByDocument_DocumentIdAndDocumentVersionAndDocument_IsActiveTrue(documentId, version)
+                    .orElseThrow(() -> new NoResultFoundException("Document Version Not Found",
+                        ErrorCode.ChatRequestedVersionNotFound));
+            }
+            latestVersion = documentVersionEntity.getDocumentVersion();
             filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-                // Always Take Latest Document
-                /** TODO
-                 * In Future we can add Version Based Searching
-                 * User will send the version to search on the document
-                 */
-                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(latestVersion));
         }
 
         EmbeddingSearchResult<TextSegment> searchResult =
-            embeddingRequestHandler.makeRequest(query, filter, 5);
+            embeddingRequestHandler.makeRequest(query, filter, Constants.MAX_EMBEDDING_RESULT);
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();

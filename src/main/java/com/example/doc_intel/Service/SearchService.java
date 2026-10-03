@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Constants.ErrorCode;
 import org.springframework.stereotype.Component;
 
 import com.example.doc_intel.ChatModels.LongChainChatModel.ChatModelFactory;
@@ -18,7 +19,7 @@ import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
-import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
@@ -26,6 +27,7 @@ import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
 
@@ -55,13 +57,15 @@ public class SearchService {
 
     private final DocumentsRepository documentsRepository;
 
+    private final DocumentVersionsRepository documentVersionsRepository;
+
     private final EmbeddingRequestHandler embeddingRequestHandler;
 
     public SearchResponseDTO processSearch(@NotBlank String query) {
         String email = Utils.getUserEmail();
-        Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
         if (optionalUserEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Exist");
+            throw new UserNotExistException("User Not Exist", ErrorCode.SearchUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
         List<TextSegmentResponseDTO> textSegmentResponseDTO = new ArrayList<>();
@@ -71,7 +75,7 @@ public class SearchService {
 
         // Handing OpenSearch Request
         EmbeddingSearchResult<TextSegment> searchResult
-            = embeddingRequestHandler.makeRequest(query, filter, 5);
+            = embeddingRequestHandler.makeRequest(query, filter, Constants.MAX_EMBEDDING_RESULT);
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
@@ -79,23 +83,18 @@ public class SearchService {
 
         // 5. Build context
         createTextSegmentResponse(matches, textSegmentResponseDTO);
-        try {
-            log.info("Search Response Generated");
-            return SearchResponseDTO.builder()
-                .textSegmentResponseDTOList(textSegmentResponseDTO)
-                .build();
-        } catch (NoResultFoundException e) {
-            throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
-        } catch (Exception e) {
-            throw new ProcessFileException("Something Went Wrong With Chat Model");
-        }
+        log.info("Search Response Generated");
+        return SearchResponseDTO.builder()
+            .textSegmentResponseDTOList(textSegmentResponseDTO)
+            .build();
     }
 
-    public AISearchResponseDTO processAISearch(@Nullable UUID documentId, @NotBlank String query) {
+    public AISearchResponseDTO processAISearch(@NotBlank String query, @Nullable UUID documentId,
+                                               @Nullable Integer version) {
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmail(email);
         if (optionalUserEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Exist");
+            throw new UserNotExistException("User Not Exist", ErrorCode.AISearchUserNotFound);
         }
         UserEntity userEntity = optionalUserEntity.get();
 
@@ -104,20 +103,34 @@ public class SearchService {
 
         // Document Handling and Create Filter
         if (Objects.nonNull(documentId)) {
+            int latestVersion;
             Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
-                .findByDocumentIdAndIsActiveTrue(documentId);
+                .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
 
             if (optionalDocumentEntity.isEmpty()) {
-                throw new NoResultFoundException("Document Not Found");
+                throw new NoResultFoundException("Document Not Found", ErrorCode.AISearchTargetNotFound);
             }
-            DocumentEntity documentEntity = optionalDocumentEntity.get();
+            // If no version is provided in the request then latest version will be picked
+            DocumentVersionEntity documentVersionEntity;
+            if (Objects.isNull(version)) {
+                documentVersionEntity = documentVersionsRepository
+                    .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+                    .orElseThrow(() -> new NoResultFoundException("There are no document versions",
+                        ErrorCode.AISearchLatestVersionNotFound));
+            } else {
+                documentVersionEntity = documentVersionsRepository
+                    .findByDocument_DocumentIdAndDocumentVersionAndDocument_IsActiveTrue(documentId, version)
+                    .orElseThrow(() -> new NoResultFoundException("Document Version Not Found",
+                        ErrorCode.AISearchRequestedVersionNotFound));
+            }
+            latestVersion = documentVersionEntity.getDocumentVersion();
             filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(latestVersion));
         }
 
         // Handing OpenSearch Request
         EmbeddingSearchResult<TextSegment> searchResult
-            = embeddingRequestHandler.makeRequest(query, filter, 5);
+            = embeddingRequestHandler.makeRequest(query, filter, Constants.MAX_EMBEDDING_RESULT);
 
         // 4. Get relevant chunks
         List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
@@ -143,17 +156,16 @@ public class SearchService {
                 .result(answer)
                 .textSegmentResponseDTOList(textSegmentResponseDTO)
                 .build();
-        } catch (NoResultFoundException e) {
-            throw new NoResultFoundException("No Result Found, Make Sure Data is Already Fed");
-        } catch (Exception e) {
-            throw new ProcessFileException("Something Went Wrong With Chat Model");
+        } catch (RuntimeException e) {
+            log.error("Chat model request failed", e);
+            throw new ProcessFileException("Unable to generate an AI response", ErrorCode.AISearchGenerationFailed, e);
         }
     }
 
     private ChatModel getChatModel(@NotBlank String email) {
         Optional<AIConfig> optionalAIConfig = aiConfigRepository.findByUser_Email(email);
         if (optionalAIConfig.isEmpty()) {
-            throw new AIConfigNotExistException("AI Config Not Exist");
+            throw new AIConfigNotExistException("AI Config Not Exist", ErrorCode.AISearchAIConfigMissing);
         }
         AIConfig aiConfig = optionalAIConfig.get();
         return chatModelFactory.giveMeChatModel(aiConfig.getType()).giveMeModel(aiConfig);
@@ -186,6 +198,4 @@ public class SearchService {
                     .build());
         });
     }
-
-
 }

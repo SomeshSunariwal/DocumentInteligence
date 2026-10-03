@@ -93,15 +93,17 @@
 1. curl -X POST http://localhost:8080/api/document -F "file=@doc.txt"
 2. curl -X POST http://localhost:8080/api/document -F "file=@DocIntel.pdf"
 3. curl -X POST http://localhost:8080/api/document -F "file=@test.pdf"
-4. curl -s "http://localhost:9200/pdf-documents/_mapping?pretty" : Check Vetcor Mapping. Its Should be KNN
+4. curl -s "http://localhost:9200/pdf-documents/\_mapping?pretty" : Check Vetcor Mapping. Its Should be KNN
 
 ##### Add to Intellij Idea VM Options:
 
-Below line solve the problem of timezone in postgres container.
+1. Below line solve the problem of timezone in postgres container.
 
 ```
 (-Duser.timezone=Asia/Kolkata)
 ```
+
+2. Load .env file in Intellij to run the application.
 
 ### Swagger APIs
 

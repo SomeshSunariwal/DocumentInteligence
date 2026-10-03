@@ -3,6 +3,7 @@ package com.example.doc_intel.DocumentEncoder;
 import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.EncoderModel;
 import com.example.doc_intel.Exceptions.FileReadError;
+import com.example.doc_intel.Constants.ErrorCode;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.NonNull;
@@ -91,7 +92,7 @@ public class TextFileDocumentEncoder implements DocumentEncoder {
 
         } catch (Exception e) {
             log.error("Error while reading text file: {}", encoderModel.getFileName(), e);
-            throw new FileReadError("Error While Reading File");
+            throw new FileReadError("Error While Reading File", ErrorCode.TextFileReadFailed);
         }
     }
 

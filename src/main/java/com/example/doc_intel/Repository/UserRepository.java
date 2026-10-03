@@ -15,7 +15,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Integer> {
 
     Optional<UserEntity> findByEmailAndIsActiveTrue(@NonNull String email);
 
-    Optional<UserEntity> deleteByEmail(@NotBlank String email);
-
     Optional<UserEntity> findByEmail(@NotBlank String email);
+
+    UserEntity deleteByEmail(@NotBlank String email);
 }

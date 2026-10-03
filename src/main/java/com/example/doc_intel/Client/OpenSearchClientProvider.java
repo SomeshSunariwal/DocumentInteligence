@@ -1,6 +1,7 @@
 package com.example.doc_intel.Client;
 
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -86,7 +87,8 @@ public class OpenSearchClientProvider implements Client<OpenSearchClient> {
 
             log.info("OpenSearch index '{}' created successfully", Constants.OPEN_SEARCH_INDEX_NAME);
         } catch (IOException e) {
-            throw new OpenSearchIndexingException("Failed to initialize OpenSearch index");
+            throw new OpenSearchIndexingException("Failed to initialize OpenSearch index",
+                ErrorCode.OpenSearchIndexInitializationFailed);
         }
     }
 }

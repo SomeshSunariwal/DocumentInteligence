@@ -1,7 +1,10 @@
 package com.example.doc_intel.Exceptions.MinIOExceptions;
 
-public class MinIOBucketCreationException extends RuntimeException {
-    public MinIOBucketCreationException(String message) {
-        super(message);
+import com.example.doc_intel.Exceptions.CodedRuntimeException;
+
+public class MinIOBucketCreationException extends CodedRuntimeException {
+
+    public MinIOBucketCreationException(String message, int errorCode) {
+        super(message, errorCode);
     }
 }

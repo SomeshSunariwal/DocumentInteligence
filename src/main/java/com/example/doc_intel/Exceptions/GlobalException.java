@@ -1,168 +1,74 @@
 package com.example.doc_intel.Exceptions;
 
+import java.util.stream.Collectors;
+import java.util.Map;
+
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.DTO.ExceptionDTO;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
-import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOBucketCreationException;
-import com.example.doc_intel.Exceptions.MinIOExceptions.MinIOObjectPutException;
-import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchIndexingException;
-import com.example.doc_intel.Exceptions.OpenSearchException.OpenSearchVectoreException;
-import com.example.doc_intel.Exceptions.OpenSearchException.UnsupportedFilterException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalException {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ExceptionDTO> handleAllExceptions(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
-    }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ExceptionDTO> handleAllRuntime(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
-    }
+    // Do not need to HttpStatus.INTERNAL_SERVER_ERROR
+    private static final Map<Class<? extends CodedRuntimeException>, HttpStatus> HTTP_STATUS_BY_EXCEPTION = Map.of(
+        UnAuthenticatedUser.class, HttpStatus.UNAUTHORIZED,
+        UnSupportedFileException.class, HttpStatus.BAD_REQUEST,
+        NoResultFoundException.class, HttpStatus.NOT_FOUND,
+        DocumentNotExistException.class, HttpStatus.NOT_FOUND,
+        UserNotExistException.class, HttpStatus.NOT_FOUND,
+        AIConfigNotExistException.class, HttpStatus.NOT_FOUND
+    );
 
-    @ExceptionHandler(MessageLengthException.class)
-    ResponseEntity<ExceptionDTO> handleMessageLengthException(MessageLengthException e) {
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(new ExceptionDTO(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(ProcessFileException.class)
-    ResponseEntity<ExceptionDTO> handleProcessFileException(ProcessFileException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(InternalServerErrorException.class)
-    ResponseEntity<ExceptionDTO> handleInternalServerErrorException(InternalServerErrorException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(NullMessageException.class)
-    ResponseEntity<ExceptionDTO> handleNullMessageException(NullMessageException e) {
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(new ExceptionDTO(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(NoResultFoundException.class)
-    ResponseEntity<ExceptionDTO> handleNoResultFoundException(NoResultFoundException e) {
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(UnSupportedFileException.class)
-    ResponseEntity<ExceptionDTO> handleUnSupportedFileException(UnSupportedFileException e) {
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(new ExceptionDTO(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(FileReadError.class)
-    ResponseEntity<ExceptionDTO> handleFileReadError(FileReadError e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(OpenSearchVectoreException.class)
-    ResponseEntity<ExceptionDTO> handleOpenSearchVectoreException(OpenSearchVectoreException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(OpenSearchIndexingException.class)
-    ResponseEntity<ExceptionDTO> handleOpenSearchIndexingException(OpenSearchIndexingException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(MinIOBucketCreationException.class)
-    ResponseEntity<ExceptionDTO> handleMinIOBucketCreationException(MinIOBucketCreationException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(MinIOObjectPutException.class)
-    ResponseEntity<ExceptionDTO> handleMinIOObjectPutException(MinIOObjectPutException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    @ExceptionHandler(CodedRuntimeException.class)
+    public ResponseEntity<ExceptionDTO> handleCodedException(CodedRuntimeException exception) {
+        HttpStatus status = getStatus(exception);
+        if (status.is5xxServerError()) {
+            log.error("Application error code {}", exception.getErrorCode(), exception);
+        }
+        return ResponseEntity.status(status)
+            .body(new ExceptionDTO(exception.getErrorCode(), exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ExceptionDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-
-        String errors = e.getBindingResult()
+    public ResponseEntity<ExceptionDTO> handleMethodArgumentNotValidException(
+        MethodArgumentNotValidException exception) {
+        String errors = exception.getBindingResult()
             .getFieldErrors()
             .stream()
             .map(error -> error.getField() + ": " + error.getDefaultMessage())
             .collect(Collectors.joining(", "));
-
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(new ExceptionDTO(HttpStatus.BAD_GATEWAY.value(), errors));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ExceptionDTO(ErrorCode.InvalidRequest, errors));
     }
 
-    @ExceptionHandler(PSQLDBException.class)
-    ResponseEntity<ExceptionDTO> handlePSQLDBException(PSQLDBException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ExceptionDTO> handleAllExceptions(Exception exception) {
+        log.error("Unhandled exception", exception);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(new ExceptionDTO(ErrorCode.UnexpectedError, "An unexpected error occurred"));
     }
 
-    @ExceptionHandler(UserNotExistException.class)
-    ResponseEntity<ExceptionDTO> handleUserNotExistException(UserNotExistException e) {
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .body(new ExceptionDTO(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ExceptionDTO> handleBadCredentialsExceptions(Exception exception) {
+        log.error("Bad Credentials exception", exception);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(new ExceptionDTO(ErrorCode.BadCredentials, "Email and Password is not correct"));
     }
 
-    @ExceptionHandler(DocumentNotExistException.class)
-    ResponseEntity<ExceptionDTO> handleDocumentNotExistException(DocumentNotExistException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+    private HttpStatus getStatus(CodedRuntimeException exception) {
+        return HTTP_STATUS_BY_EXCEPTION.getOrDefault(exception.getClass(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    @ExceptionHandler(AIConfigNotExistException.class)
-    ResponseEntity<ExceptionDTO> handleAIConfigNotExistException(AIConfigNotExistException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(UnsupportedFilterException.class)
-    ResponseEntity<ExceptionDTO> handleUnsupportedFilterException(UnsupportedFilterException e) {
-        return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ExceptionDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(UnAuthenticatedUser.class)
-    ResponseEntity<ExceptionDTO> handleUnAuthenticatedUser(UnAuthenticatedUser e) {
-        return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .body(new ExceptionDTO(HttpStatus.UNAUTHORIZED.value(), e.getMessage()));
-    }
-
 }

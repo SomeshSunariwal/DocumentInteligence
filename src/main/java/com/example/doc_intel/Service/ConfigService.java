@@ -4,6 +4,7 @@ import com.example.doc_intel.DTO.ChatModel.AIConfigRequestDTO;
 import com.example.doc_intel.DTO.ChatModel.AIConfigResponseDTO;
 import com.example.doc_intel.Entity.AIConfig;
 import com.example.doc_intel.Entity.UserEntity;
+import com.example.doc_intel.Constants.ErrorCode;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.UserRepository;
@@ -30,7 +31,7 @@ public class ConfigService {
         Optional<UserEntity> userEntity = userRepository.findByEmailAndIsActiveTrue(email);
 
         if (userEntity.isEmpty()) {
-            throw new UserNotExistException("User Not Exist");
+            throw new UserNotExistException("User Not Exist", ErrorCode.ConfigUserNotFound);
         }
 
         Optional<AIConfig> aiConfig = aiConfigRepository.findByUser_UserId(userEntity.get().getUserId());

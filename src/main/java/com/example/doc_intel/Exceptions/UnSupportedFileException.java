@@ -1,7 +1,8 @@
 package com.example.doc_intel.Exceptions;
 
-public class UnSupportedFileException extends RuntimeException {
-    public UnSupportedFileException(String message) {
-        super(message);
+public class UnSupportedFileException extends CodedRuntimeException {
+
+    public UnSupportedFileException(String message, int errorCode) {
+        super(message, errorCode);
     }
 }

@@ -7,4 +7,5 @@ import dev.langchain4j.store.embedding.filter.Filter;
 public interface CustomEmbeddingMethods {
 
     EmbeddingSearchResult<TextSegment> searchByFilter(Filter filter);
+
 }
