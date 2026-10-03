@@ -33,7 +33,6 @@ public class ConfigService {
         if (userEntity.isEmpty()) {
             throw new UserNotExistException("User Not Exist", ErrorCode.ConfigUserNotFound);
         }
-
         Optional<AIConfig> aiConfig = aiConfigRepository.findByUser_UserId(userEntity.get().getUserId());
 
         // if Config is already Present the update it.
@@ -42,7 +41,13 @@ public class ConfigService {
             aiConfig.get().setBaseURL(aiConfigRequestDTO.getBaseURL());
             aiConfig.get().setModelName(aiConfigRequestDTO.getModelName());
             aiConfig.get().setType(aiConfigRequestDTO.getType());
-            return AIConfigResponseDTO.builder().message("Updated").build();
+
+            return AIConfigResponseDTO.builder()
+                .type(aiConfig.get().getType())
+                .modelName(aiConfig.get().getModelName())
+                .baseURL(aiConfig.get().getBaseURL())
+                .apiKey(aiConfig.get().getApiKey())
+                .build();
         }
 
         // if config is not present then create it.
@@ -55,6 +60,28 @@ public class ConfigService {
             .build();
 
         aiConfigRepository.save(aiConfigEntity);
-        return AIConfigResponseDTO.builder().message("Created").build();
+        return AIConfigResponseDTO.builder()
+            .type(aiConfigEntity.getType())
+            .modelName(aiConfigEntity.getModelName())
+            .baseURL(aiConfigEntity.getBaseURL())
+            .apiKey(aiConfigEntity.getApiKey())
+            .build();
+    }
+
+    public AIConfigResponseDTO getConfig() {
+        String email = Utils.getUserEmail();
+        Optional<AIConfig> optionalAIConfig = aiConfigRepository.findByUser_Email(email);
+
+        if (optionalAIConfig.isEmpty()) {
+            throw new UserNotExistException("AI Config Not Found", ErrorCode.AIConfigNotFound);
+        }
+        AIConfig aiConfig = optionalAIConfig.get();
+
+        return AIConfigResponseDTO.builder()
+            .type(aiConfig.getType())
+            .modelName(aiConfig.getModelName())
+            .baseURL(aiConfig.getBaseURL())
+            .apiKey(aiConfig.getApiKey())
+            .build();
     }
 }

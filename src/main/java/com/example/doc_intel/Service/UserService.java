@@ -124,4 +124,21 @@ public class UserService {
             .build();
     }
 
+    public UserResponseDTO getUser() {
+        String email = Utils.getUserEmail();
+
+        Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
+        if (optionalUserEntity.isEmpty()) {
+            throw new UserNotExistException("User Not Found", ErrorCode.UserGetUserNotFound);
+        }
+        UserEntity userEntity = optionalUserEntity.get();
+
+        return UserResponseDTO.builder()
+            .userId(userEntity.getUserId())
+            .username(userEntity.getUsername())
+            .firstName(userEntity.getFirstName())
+            .lastName(userEntity.getLastName())
+            .email(userEntity.getEmail())
+            .build();
+    }
 }
