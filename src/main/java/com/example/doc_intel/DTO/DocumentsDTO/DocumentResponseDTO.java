@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
+import javax.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -18,6 +19,9 @@ import java.util.UUID;
 public class DocumentResponseDTO {
 
     @NonNull
+    private Integer version;
+
+    @NonNull
     private String fileName;
 
     @NonNull
@@ -26,10 +30,8 @@ public class DocumentResponseDTO {
     @NonNull
     private UUID documentId;
 
+    @Nullable
     private String URI;
-
-    @NonNull
-    private Integer version;
 
     @NonNull
     private Integer chunks;

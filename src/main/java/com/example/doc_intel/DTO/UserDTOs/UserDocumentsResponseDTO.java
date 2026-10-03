@@ -1,6 +1,6 @@
 package com.example.doc_intel.DTO.UserDTOs;
 
-import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
+import com.example.doc_intel.DTO.DocumentsDTO.GetDocumentResponseDTO;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -38,6 +38,6 @@ public class UserDocumentsResponseDTO {
     private String email;
 
     @Nullable
-    private List<DocumentResponseDTO> documents = new ArrayList<>();
+    private List<GetDocumentResponseDTO> documents = new ArrayList<>();
 
 }

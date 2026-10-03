@@ -24,7 +24,7 @@ import java.util.UUID;
 public class DocumentEntity {
 
     @Id
-    @Column(nullable = false)
+    @Column(name = "document_id", nullable = false)
     private UUID documentId;
 
     @NonNull

@@ -2,6 +2,7 @@ package com.example.doc_intel.Service;
 
 import com.example.doc_intel.ChatModels.StreamChatModel.StreamChatModelClient;
 import com.example.doc_intel.Constants.Constants;
+import com.example.doc_intel.DTO.DocumentsDTO.GetDocumentResponseDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DocumentProcesser.DocumentProcessor;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
@@ -95,8 +96,9 @@ public class DocumentService {
     public DocumentResponseDTO updateDocument(@NonNull UUID documentId,
                                               @NonNull MultipartFile file) {
         String email = Utils.getUserEmail();
-        List< KafkaEventDTO> kafkaEventDTO = new ArrayList<>();
-        DocumentResponseDTO documentResponseDTO = documentProcessor.processDocumentUpdate(email, documentId, file, kafkaEventDTO);
+        List<KafkaEventDTO> kafkaEventDTO = new ArrayList<>();
+        DocumentResponseDTO documentResponseDTO = documentProcessor.processDocumentUpdate(email, documentId, file,
+            kafkaEventDTO);
         publisherService.publishDocument(kafkaEventDTO.getFirst());
         return documentResponseDTO;
     }
@@ -163,31 +165,41 @@ public class DocumentService {
         // Documen Check
         UserEntity userEntity = optionalUserEntity.get();
         Page<DocumentEntity> documentPage = documentsRepository.findByUser_EmailAndIsActiveTrue(email,
-            PageRequest.of(page, 15, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
+            PageRequest.of(page, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
         List<DocumentEntity> documentEntity = documentPage.getContent();
         if (documentEntity.isEmpty()) {
             log.info("No Documents Found");
         }
 
-        List<DocumentResponseDTO> documents = documentEntity.stream().map(
+        List<GetDocumentResponseDTO> documents = documentEntity.stream().map(
             document -> {
-                DocumentVersionEntity version = getLatestVersion(document.getDocumentId());
-                // get Persistence URI;
-                String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(), version.getContentType(),
-                    version.getFileName());
+                List<DocumentVersionEntity> documentVersions = getDocumentVersions(document.getDocumentId());
+                if (documentVersions.isEmpty()) {
+                    return null;
+                }
+                List<DocumentResponseDTO> documentResponseDTOS = documentVersions.stream().map(
+                    version -> {
+                        // get Persistence URI;
+                        String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(),
+                            version.getContentType(),
+                            version.getFileName());
 
-                return DocumentResponseDTO.builder()
-                    .fileName(version.getFileName())
-                    .fileSize(version.getFileSize())
-                    .fileExtensions(version.getFileExtensions())
-                    .documentId(document.getDocumentId())
-                    .URI(url)
-                    .version(version.getDocumentVersion())
-                    .createdAt(version.getCreatedAt())
-                    .updatedAt(document.getUpdateAt())
-                    .status(version.getStatus())
-                    .chunks(version.getChunksCount())
-                    .build();
+                        return DocumentResponseDTO.builder()
+                            .fileName(version.getFileName())
+                            .fileSize(version.getFileSize())
+                            .fileExtensions(version.getFileExtensions())
+                            .documentId(document.getDocumentId())
+                            .URI(url)
+                            .version(version.getDocumentVersion())
+                            .createdAt(version.getCreatedAt())
+                            .updatedAt(document.getUpdateAt())
+                            .status(version.getStatus())
+                            .chunks(version.getChunksCount())
+                            .build();
+                    }
+                ).toList();
+                return GetDocumentResponseDTO.builder().documentId(document.getDocumentId())
+                    .documentVersions(documentResponseDTOS).build();
             }).toList();
 
         log.info("Documents Found: {}", documents.size());
@@ -205,7 +217,7 @@ public class DocumentService {
      * Get Document of the User with DocumentId
      */
     @Transactional
-    public DocumentResponseDTO getDocument(@NonNull UUID documentId) {
+    public GetDocumentResponseDTO getDocument(@NonNull UUID documentId) {
         String email = Utils.getUserEmail();
         // User Check
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
@@ -224,22 +236,34 @@ public class DocumentService {
         }
 
         DocumentEntity documentEntity = optionalDocumentEntity.get();
-        DocumentVersionEntity version = getLatestVersion(documentId);
-        String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(),
-            version.getContentType(), version.getFileName());
+        List<DocumentVersionEntity> documentVersions = getDocumentVersions(documentId);
+        if (documentVersions.isEmpty()) {
+            return GetDocumentResponseDTO.builder().documentId(documentEntity.getDocumentId()).documentVersions(null)
+                .build();
+        }
 
-        return DocumentResponseDTO.builder()
-            .fileName(version.getFileName())
-            .fileSize(version.getFileSize())
-            .fileExtensions(version.getFileExtensions())
+        List<DocumentResponseDTO> documentResponseDTOS = documentVersions.stream().map(
+            documentVersionEntity -> {
+                String url = minIOProcessor.getPresignedObjectUrl(documentVersionEntity.getObjectKey(),
+                    documentVersionEntity.getContentType(), documentVersionEntity.getFileName());
+                return DocumentResponseDTO.builder()
+                    .fileName(documentVersionEntity.getFileName())
+                    .fileSize(documentVersionEntity.getFileSize())
+                    .fileExtensions(documentVersionEntity.getFileExtensions())
+                    .documentId(documentEntity.getDocumentId())
+                    .URI(url)
+                    .version(documentVersionEntity.getDocumentVersion())
+                    .createdAt(documentVersionEntity.getCreatedAt())
+                    .updatedAt(documentEntity.getUpdateAt())
+                    .status(documentVersionEntity.getStatus())
+                    .chunks(documentVersionEntity.getChunksCount())
+                    .build();
+            }
+        ).toList();
+
+        return GetDocumentResponseDTO.builder()
             .documentId(documentEntity.getDocumentId())
-            .URI(url)
-            .version(version.getDocumentVersion())
-            .createdAt(version.getCreatedAt())
-            .updatedAt(documentEntity.getUpdateAt())
-            .status(version.getStatus())
-            .chunks(version.getChunksCount())
-            .build();
+            .documentVersions(documentResponseDTOS).build();
     }
 
     /**
@@ -329,6 +353,11 @@ public class DocumentService {
             }
         );
         return emitter;
+    }
+
+    private List<DocumentVersionEntity> getDocumentVersions(UUID documentId) {
+        return documentVersionsRepository
+            .findByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId);
     }
 
     private DocumentVersionEntity getLatestVersion(UUID documentId) {

@@ -18,4 +18,5 @@ public interface DocumentVersionsRepository extends JpaRepository<DocumentVersio
 
     List<DocumentVersionEntity> findByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(
         @NonNull UUID documentId);
+
 }

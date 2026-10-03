@@ -1,6 +1,7 @@
 package com.example.doc_intel.Controller;
 
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
+import com.example.doc_intel.DTO.DocumentsDTO.GetDocumentResponseDTO;
 import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
 import com.example.doc_intel.Service.DocumentService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -83,9 +84,9 @@ public class DocumentController {
     }
 
     @GetMapping("/users/documents/{documentId}")
-    public ResponseEntity<DocumentResponseDTO> getDocument(@NonNull @PathVariable UUID documentId) {
-        DocumentResponseDTO documentResponseDTO = documentService.getDocument(documentId);
-        return ResponseEntity.status(HttpStatus.OK).body(documentResponseDTO);
+    public ResponseEntity<GetDocumentResponseDTO> getDocument(@NonNull @PathVariable UUID documentId) {
+        GetDocumentResponseDTO getDocumentResponseDTO = documentService.getDocument(documentId);
+        return ResponseEntity.status(HttpStatus.OK).body(getDocumentResponseDTO);
     }
 
     /**
