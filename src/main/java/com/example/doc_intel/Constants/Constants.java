@@ -2,7 +2,7 @@ package com.example.doc_intel.Constants;
 
 public class Constants {
 
-    public static final Integer MAX_EMBEDDING_RESULT = 5;
+    public static final Integer MAX_EMBEDDING_RESULT = 10;
 
     public static final String META_DATA_FILE_NAME = "fileName";
 

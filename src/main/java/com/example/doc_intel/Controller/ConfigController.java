@@ -10,14 +10,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(
-        name = "Config Controller",
-        description = "API for managing AI configuration"
+    name = "Config Controller",
+    description = "API for managing AI configuration"
 )
 @RequiredArgsConstructor
 @RestController
@@ -34,13 +35,22 @@ public class ConfigController {
      * @return
      */
     @Operation(
-            summary = "Add or Update AI Configuration",
-            description = "Allows users to configure AI settings"
+        summary = "Add or Update AI Configuration",
+        description = "Allows users to configure AI settings"
     )
     @PostMapping("/config")
     public ResponseEntity<AIConfigResponseDTO> addOrUpdateConfig(
-            @Valid @RequestBody AIConfigRequestDTO aiConfigRequestDTO) {
+        @Valid @RequestBody AIConfigRequestDTO aiConfigRequestDTO) {
         AIConfigResponseDTO result = configService.addOrUpdateConfig(aiConfigRequestDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    /**
+     * This API is used to get the AI configuration.
+     */
+    @GetMapping("/config")
+    public ResponseEntity<AIConfigResponseDTO> getConfig() {
+        AIConfigResponseDTO result = configService.getConfig();
+        return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 }

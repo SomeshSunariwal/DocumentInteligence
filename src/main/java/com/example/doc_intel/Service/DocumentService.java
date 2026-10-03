@@ -167,7 +167,7 @@ public class DocumentService {
         // Documen Check
         UserEntity userEntity = optionalUserEntity.get();
         Page<DocumentEntity> documentPage = documentsRepository.findByUser_EmailAndIsActiveTrue(email,
-            PageRequest.of(page, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
+            PageRequest.of(page, 15, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
         List<DocumentEntity> documentEntity = documentPage.getContent();
         if (documentEntity.isEmpty()) {
             log.info("No Documents Found");

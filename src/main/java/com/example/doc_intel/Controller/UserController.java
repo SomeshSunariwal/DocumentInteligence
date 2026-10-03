@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +41,15 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> addUser(@Valid @RequestBody UserRequestDTO userRequestDTO) {
         UserResponseDTO userResponseDTO = userService.addUser(userRequestDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDTO);
+    }
+
+    /**
+     * This give the current user details
+     */
+    @GetMapping
+    public ResponseEntity<UserResponseDTO> getUser() {
+        UserResponseDTO userResponseDTO = userService.getUser();
+        return ResponseEntity.status(HttpStatus.OK).body(userResponseDTO);
     }
 
     /**
