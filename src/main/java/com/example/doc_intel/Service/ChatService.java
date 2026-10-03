@@ -10,9 +10,11 @@ import javax.annotation.Nullable;
 
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -58,6 +60,8 @@ public class ChatService {
 
     private final DocumentsRepository documentsRepository;
 
+    private final DocumentVersionsRepository documentVersionsRepository;
+
     public ResponseBodyEmitter chat(@NotBlank String query, @Nullable UUID documentId) {
         String email = Utils.getUserEmail();
         Optional<UserEntity> optionalUser = userRepository.findByEmailAndIsActiveTrue(email);
@@ -83,14 +87,12 @@ public class ChatService {
             if (optionalDocumentEntity.isEmpty()) {
                 throw new NoResultFoundException("Document Not Found");
             }
-            DocumentEntity documentEntity = optionalDocumentEntity.get();
+            DocumentVersionEntity latestVersion = documentVersionsRepository
+                .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+                .orElseThrow(() -> new NoResultFoundException("Document Version Not Found"));
             filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
                 // Always Take Latest Document
-                /** TODO
-                 * In Future we can add Version Based Searching
-                 * User will send the version to search on the document
-                 */
-                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(latestVersion.getDocumentVersion()));
         }
 
         EmbeddingSearchResult<TextSegment> searchResult =

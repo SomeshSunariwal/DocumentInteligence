@@ -18,12 +18,15 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.util.List;
 import java.util.UUID;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Controller class for handling document-related API endpoints.
@@ -33,6 +36,7 @@ import java.util.UUID;
     description = "These APIs used to perform document related operations"
 )
 @Slf4j
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -72,8 +76,9 @@ public class DocumentController {
     }
 
     @GetMapping("/users/documents")
-    public ResponseEntity<UserDocumentsResponseDTO> getUsersAllDocuments() {
-        UserDocumentsResponseDTO userAllDocuments = documentService.getUserAllDocuments();
+    public ResponseEntity<UserDocumentsResponseDTO> getUsersAllDocuments(
+        @RequestParam(defaultValue = "0") @Min(0) int page) {
+        UserDocumentsResponseDTO userAllDocuments = documentService.getUserAllDocuments(page);
         return ResponseEntity.status(HttpStatus.OK).body(userAllDocuments);
     }
 

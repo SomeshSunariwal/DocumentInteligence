@@ -15,6 +15,7 @@ import com.example.doc_intel.Constants.Constants;
 import com.example.doc_intel.DTO.DocumentsDTO.DocumentResponseDTO;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.DocumentStatus;
 import com.example.doc_intel.Enums.FileExtensions;
@@ -23,6 +24,7 @@ import com.example.doc_intel.Exceptions.UnSupportedFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
 
@@ -41,6 +43,8 @@ public class DocumentProcessor {
     private final UserRepository userRepository;
 
     private final DocumentsRepository documentsRepository;
+
+    private final DocumentVersionsRepository documentVersionsRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<DocumentResponseDTO> processUploadDocuments(@NonNull UserEntity user, @NonNull List<MultipartFile> files,
@@ -73,32 +77,43 @@ public class DocumentProcessor {
 
         UserEntity user = userOptional.get();
         DocumentEntity document = documentOptional.get();
+        DocumentVersionEntity previousVersion = documentVersionsRepository
+            .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+            .orElseThrow(() -> new DocumentNotExistException("Document version not found"));
 
         String fileName = file.getOriginalFilename() == null
             ? "Document.%s".formatted(fileExtension) : file.getOriginalFilename();
         String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
 
-        ObjectWriteResponse writeResponse = minIOProcessor.putObject(file, document.getObjectKey());
+        ObjectWriteResponse writeResponse = minIOProcessor.putObject(file, previousVersion.getObjectKey());
 
-        document.setFileName(fileName);
-        document.setFileSize(file.getSize());
-        document.setContentType(contentType);
-        document.setUpdateAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        document.setUpdateAt(now);
         document.setUpdatedBy(email);
-        document.setStatus(DocumentStatus.UPLOADED);
-        document.setVersion(document.getVersion() + 1);
-        document.setChunks(0);
-        document.setFileExtensions(fileExtension);
-        document.setMinIOVersionId(writeResponse.versionId());
+        DocumentVersionEntity version = DocumentVersionEntity.builder()
+            .document(document)
+            .fileName(fileName)
+            .objectKey(previousVersion.getObjectKey())
+            .bucketName(previousVersion.getBucketName())
+            .contentType(contentType)
+            .fileSize(file.getSize())
+            .fileExtensions(fileExtension)
+            .chunksCount(0)
+            .documentVersion(previousVersion.getDocumentVersion() + 1)
+            .minIOVersionId(writeResponse.versionId())
+            .createdAt(now)
+            .createdBy(email)
+            .status(DocumentStatus.UPLOADED)
+            .build();
+        DocumentVersionEntity savedVersion = documentVersionsRepository.save(version);
 
-        kafkaEventDTOS.add(createEvent(user, document, fileExtension, writeResponse.versionId()));
-        return toResponse(document);
+        kafkaEventDTOS.add(createEvent(user, savedVersion));
+        return toResponse(document, savedVersion);
     }
 
     private DocumentResponseDTO processOneDocument(UserEntity user, MultipartFile file,
                                                    List<KafkaEventDTO> events) {
         FileExtensions fileExtension = Utils.getExtension(file);
-
         if (fileExtension == null) {
             throw new UnSupportedFileException("File Type not support");
         }
@@ -114,55 +129,61 @@ public class DocumentProcessor {
         LocalDateTime now = LocalDateTime.now();
         DocumentEntity document = DocumentEntity.builder()
             .documentId(documentId)
+            .isActive(true)
+            .user(user)
+            .createdAt(now)
+            .createdBy(user.getEmail())
+            .updateAt(now)
+            .updatedBy(user.getEmail())
+            .build();
+        DocumentEntity savedDocument = documentsRepository.save(document);
+
+        DocumentVersionEntity documentVersionEntity = DocumentVersionEntity.builder()
+            .document(savedDocument)
             .fileName(fileName)
             .objectKey(objectKey)
             .bucketName(Constants.MINIO_BUCKET_NAME)
             .contentType(contentType)
             .fileSize(file.getSize())
             .fileExtensions(fileExtension)
-            .isActive(true)
-            .version(1)
+            .chunksCount(0)
+            .documentVersion(1)
             .minIOVersionId(writeResponse.versionId())
-            .status(DocumentStatus.UPLOADED)
-            .user(user)
             .createdAt(now)
             .createdBy(user.getEmail())
-            .updateAt(now)
-            .updatedBy(user.getEmail())
-            .chunks(0)
+            .status(DocumentStatus.UPLOADED)
             .build();
 
-        DocumentEntity savedDocument = documentsRepository.save(document);
-        events.add(createEvent(user, savedDocument, fileExtension, writeResponse.versionId()));
-        return toResponse(savedDocument);
+        DocumentVersionEntity savedVersion = documentVersionsRepository.save(documentVersionEntity);
+        events.add(createEvent(user, savedVersion));
+        return toResponse(savedDocument, savedVersion);
     }
 
-    private KafkaEventDTO createEvent(UserEntity user, DocumentEntity document, FileExtensions extension,
-                                      String minioVersion) {
+    private KafkaEventDTO createEvent(UserEntity user, DocumentVersionEntity documentVersionEntity) {
         return KafkaEventDTO.builder()
             .eventId(UUID.randomUUID())
-            .documentId(document.getDocumentId())
+            .documentId(documentVersionEntity.getDocument().getDocumentId())
             .userId(user.getUserId())
-            .objectKey(document.getObjectKey())
-            .fileName(document.getFileName())
-            .fileExtensions(extension)
-            .documentVersion(document.getVersion())
-            .minIOVersion(minioVersion)
+            .objectKey(documentVersionEntity.getObjectKey())
+            .fileName(documentVersionEntity.getFileName())
+            .fileExtensions(documentVersionEntity.getFileExtensions())
+            .documentVersion(documentVersionEntity.getDocumentVersion())
+            .minIOVersion(documentVersionEntity.getMinIOVersionId())
             .build();
     }
 
-    private DocumentResponseDTO toResponse(DocumentEntity document) {
+    private DocumentResponseDTO toResponse(DocumentEntity document, DocumentVersionEntity version) {
         return DocumentResponseDTO.builder()
-            .version(document.getVersion())
+            .version(version.getDocumentVersion())
             .URI(null)
             .documentId(document.getDocumentId())
-            .fileName(document.getFileName())
-            .fileSize(document.getFileSize())
-            .fileExtensions(document.getFileExtensions())
-            .chunks(document.getChunks())
-            .createdAt(document.getCreatedAt())
+            .fileName(version.getFileName())
+            .fileSize(version.getFileSize())
+            .fileExtensions(version.getFileExtensions())
+            .chunks(version.getChunksCount())
+            .createdAt(version.getCreatedAt())
             .updatedAt(document.getUpdateAt())
-            .status(document.getStatus())
+            .status(version.getStatus())
             .build();
     }
 }

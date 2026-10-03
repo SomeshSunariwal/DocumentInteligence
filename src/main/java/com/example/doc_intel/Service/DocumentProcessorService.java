@@ -3,7 +3,6 @@ package com.example.doc_intel.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -13,14 +12,14 @@ import com.example.doc_intel.DTO.EncoderModel;
 import com.example.doc_intel.DTO.KafkaEventDTO;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoder;
 import com.example.doc_intel.DocumentEncoder.DocumentEncoderFactory;
-import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Enums.DocumentStatus;
 import com.example.doc_intel.Enums.FileExtensions;
 import com.example.doc_intel.Enums.StoreType;
 import com.example.doc_intel.Exceptions.DBExceptions.DocumentNotExistException;
 import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
-import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Store.StoreFactory;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -42,9 +41,7 @@ public class DocumentProcessorService {
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
 
-    private DocumentEncoder documentEncoder;
-
-    private final DocumentsRepository documentsRepository;
+    private final DocumentVersionsRepository documentVersionsRepository;
 
     private final MinIOProcessor minIOProcessor;
 
@@ -53,13 +50,13 @@ public class DocumentProcessorService {
     DocumentProcessorService(@Value("${vector.data.store}") final StoreType storeType,
                              final StoreFactory storeFactory,
                              final DocumentEncoderFactory documentEncoderFactory,
-                             final DocumentsRepository documentsRepository,
+                             final DocumentVersionsRepository documentVersionsRepository,
                              final MinIOProcessor minIOProcessor,
                              final DocumentProcessingStatusService documentProcessingStatusService
     ) {
         this.embeddingStore = storeFactory.giveMeStore(storeType).giveMeStore();
         this.documentEncoderFactory = documentEncoderFactory;
-        this.documentsRepository = documentsRepository;
+        this.documentVersionsRepository = documentVersionsRepository;
         this.minIOProcessor = minIOProcessor;
         this.documentProcessingStatusService = documentProcessingStatusService;
     }
@@ -69,20 +66,20 @@ public class DocumentProcessorService {
         //---------------------- Document Encoding and Storing Embedding
         documentProcessingStatusService.markProcessing(event.getDocumentId(), event.getDocumentVersion());
 
-        Optional<DocumentEntity> optionalDocumentEntity = documentsRepository
-            .findByDocumentIdAndVersionAndIsActiveTrue(event.getDocumentId(), event.getDocumentVersion());
-        if (optionalDocumentEntity.isEmpty()) {
-            log.info("Document with id {} not found", event.getDocumentId());
-            throw new DocumentNotExistException(
-                "Document not found during Kafka processing: " + event.getDocumentId());
-        }
-        DocumentEntity documentEntity = optionalDocumentEntity.get();
+        DocumentVersionEntity versionEntity = documentVersionsRepository
+            .findByDocument_DocumentIdAndDocumentVersionAndDocument_IsActiveTrue(
+                event.getDocumentId(), event.getDocumentVersion())
+            .orElseThrow(() -> {
+                log.info("Document with id {} not found", event.getDocumentId());
+                return new DocumentNotExistException(
+                    "Document version not found during Kafka processing: " + event.getDocumentId());
+            });
 
         try {
             // GetFile from the MinIO
             Integer chunks;
-            try (InputStream fileStream = minIOProcessor.getObject(documentEntity.getObjectKey(),
-                event.getMinIOVersion())) {
+            try (InputStream fileStream = minIOProcessor.getObject(versionEntity.getObjectKey(),
+                versionEntity.getMinIOVersionId())) {
 
                 chunks = storeEmbeddings(fileStream,
                     event.getFileExtensions(),
@@ -92,14 +89,14 @@ public class DocumentProcessorService {
                     event.getFileName()
                 );
             }
-            documentEntity.setChunks(chunks);
+            versionEntity.setChunksCount(chunks);
         } catch (RuntimeException | IOException e) {
             documentProcessingStatusService.markFailed(event.getDocumentId(), event.getDocumentVersion());
             log.error("Failed to process Kafka event: {}", event.getEventId(), e);
             throw new ProcessFileException("Failed to process Kafka event: " + event.getEventId(), e);
         }
         // Update Database
-        documentEntity.setStatus(DocumentStatus.COMPLETED);
+        versionEntity.setStatus(DocumentStatus.COMPLETED);
     }
 
     /**
@@ -108,7 +105,7 @@ public class DocumentProcessorService {
     private Integer storeEmbeddings(@NonNull InputStream fileStream, @NonNull FileExtensions fileExtension,
                                     @NonNull String userId, @NonNull Integer version, @NonNull String documentId,
                                     @NonNull String fileName) {
-        documentEncoder = documentEncoderFactory.getParser(fileExtension);
+        DocumentEncoder documentEncoder = documentEncoderFactory.getParser(fileExtension);
         List<TextSegment> chunks;
         try {
             // Created Encoder Model

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.doc_intel.Enums.DocumentStatus;
-import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class DocumentProcessingStatusService {
 
-    private final DocumentsRepository documentsRepository;
+    private final DocumentVersionsRepository documentVersionsRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markProcessing(@NonNull UUID documentId, @NonNull Integer documentVersion) {
@@ -29,7 +29,8 @@ public class DocumentProcessingStatusService {
 
     private void updateStatus(@NonNull UUID documentId, @NonNull DocumentStatus status,
                               @NonNull Integer documentVersion) {
-        documentsRepository.findByDocumentIdAndVersionAndIsActiveTrue(documentId, documentVersion)
-            .ifPresent(document -> document.setStatus(status));
+        documentVersionsRepository
+            .findByDocument_DocumentIdAndDocumentVersionAndDocument_IsActiveTrue(documentId, documentVersion)
+            .ifPresent(documentVersionEntity -> documentVersionEntity.setStatus(status));
     }
 }

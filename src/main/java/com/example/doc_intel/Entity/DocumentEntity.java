@@ -1,15 +1,11 @@
 package com.example.doc_intel.Entity;
 
-import com.example.doc_intel.Enums.DocumentStatus;
-import com.example.doc_intel.Enums.FileExtensions;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.EnumType;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.Builder;
@@ -33,48 +29,13 @@ public class DocumentEntity {
 
     @NonNull
     @Column(nullable = false)
-    private String fileName;
-
-    @NonNull
-    @Column(nullable = false)
-    private String objectKey;
-
-    @NonNull
-    @Column(nullable = false)
-    private String bucketName;
-
-    @NonNull
-    @Column(nullable = false)
-    private String contentType;
-
-    @NonNull
-    @Column(nullable = false)
-    private Long fileSize;
-
-    @NonNull
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private FileExtensions fileExtensions;
-
-    @NonNull
-    @Column(nullable = false)
     private Boolean isActive;
 
     @NonNull
     @Column(nullable = false)
-    private Integer chunks;
-
-    @NonNull
-    @Column(nullable = false)
-    private Integer version;
-
-    @NonNull
-    @Column(nullable = false)
-    private String minIOVersionId;
-
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @NonNull
     @Column(nullable = false)
     private String createdBy;
 
@@ -87,11 +48,6 @@ public class DocumentEntity {
     private String updatedBy;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_email", referencedColumnName = "user_email", nullable = false)
+    @JoinColumn(name = "email", referencedColumnName = "user_email", nullable = false)
     private UserEntity user;
-
-    @NonNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DocumentStatus status;
 }

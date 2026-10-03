@@ -10,6 +10,7 @@ import com.example.doc_intel.DTO.UserDTOs.UserDocumentsResponseDTO;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
 import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Enums.ChatDataType;
 import com.example.doc_intel.Enums.DocumentStatus;
@@ -19,6 +20,7 @@ import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.MinIOProcesser.MinIOProcessor;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
 import dev.langchain4j.data.segment.TextSegment;
@@ -31,6 +33,9 @@ import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -52,6 +57,8 @@ public class DocumentService {
     private final UserRepository userRepository;
 
     private final DocumentsRepository documentsRepository;
+
+    private final DocumentVersionsRepository documentVersionsRepository;
 
     private final PublisherService publisherService;
 
@@ -116,19 +123,26 @@ public class DocumentService {
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
 
+        /**
+         * TODO: Currently we are only deleting the latest version
+         * 1. we can pass the version Id to delete particular version
+         * 2. if versionId not present then delete all the version
+         */
+        DocumentVersionEntity version = getLatestVersion(documentId);
+
         // Soft Deleting Document in the Table
         documentEntity.setIsActive(false);
-        documentEntity.setStatus(DocumentStatus.DELETED);
+        version.setStatus(DocumentStatus.DELETED);
 
         return DocumentResponseDTO.builder()
-            .version(documentEntity.getVersion())
+            .version(version.getDocumentVersion())
             .URI(null)
             .documentId(documentEntity.getDocumentId())
-            .chunks(documentEntity.getChunks())
-            .fileExtensions(documentEntity.getFileExtensions())
-            .fileName(documentEntity.getFileName())
-            .fileSize(documentEntity.getFileSize())
-            .createdAt(documentEntity.getCreatedAt())
+            .chunks(version.getChunksCount())
+            .fileExtensions(version.getFileExtensions())
+            .fileName(version.getFileName())
+            .fileSize(version.getFileSize())
+            .createdAt(version.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
             .build();
     }
@@ -137,7 +151,7 @@ public class DocumentService {
      * Get All Documents of the User
      */
     @Transactional
-    public UserDocumentsResponseDTO getUserAllDocuments() {
+    public UserDocumentsResponseDTO getUserAllDocuments(int page) {
         String email = Utils.getUserEmail();
         // User Check
         Optional<UserEntity> optionalUserEntity = userRepository.findByEmailAndIsActiveTrue(email);
@@ -148,28 +162,31 @@ public class DocumentService {
 
         // Documen Check
         UserEntity userEntity = optionalUserEntity.get();
-        List<DocumentEntity> documentEntity = documentsRepository.findByUser_EmailAndIsActiveTrue(email);
+        Page<DocumentEntity> documentPage = documentsRepository.findByUser_EmailAndIsActiveTrue(email,
+            PageRequest.of(page, 15, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("documentId"))));
+        List<DocumentEntity> documentEntity = documentPage.getContent();
         if (documentEntity.isEmpty()) {
             log.info("No Documents Found");
         }
 
         List<DocumentResponseDTO> documents = documentEntity.stream().map(
             document -> {
+                DocumentVersionEntity version = getLatestVersion(document.getDocumentId());
                 // get Persistence URI;
-                String url = minIOProcessor.getPresignedObjectUrl(document.getObjectKey(), document.getContentType(),
-                    document.getFileName());
+                String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(), version.getContentType(),
+                    version.getFileName());
 
                 return DocumentResponseDTO.builder()
-                    .fileName(document.getFileName())
-                    .fileSize(document.getFileSize())
-                    .fileExtensions(document.getFileExtensions())
+                    .fileName(version.getFileName())
+                    .fileSize(version.getFileSize())
+                    .fileExtensions(version.getFileExtensions())
                     .documentId(document.getDocumentId())
                     .URI(url)
-                    .version(document.getVersion())
-                    .createdAt(document.getCreatedAt())
+                    .version(version.getDocumentVersion())
+                    .createdAt(version.getCreatedAt())
                     .updatedAt(document.getUpdateAt())
-                    .status(document.getStatus())
-                    .chunks(document.getChunks())
+                    .status(version.getStatus())
+                    .chunks(version.getChunksCount())
                     .build();
             }).toList();
 
@@ -207,20 +224,21 @@ public class DocumentService {
         }
 
         DocumentEntity documentEntity = optionalDocumentEntity.get();
-        String url = minIOProcessor.getPresignedObjectUrl(documentEntity.getObjectKey(),
-            documentEntity.getContentType(), documentEntity.getFileName());
+        DocumentVersionEntity version = getLatestVersion(documentId);
+        String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(),
+            version.getContentType(), version.getFileName());
 
         return DocumentResponseDTO.builder()
-            .fileName(documentEntity.getFileName())
-            .fileSize(documentEntity.getFileSize())
-            .fileExtensions(documentEntity.getFileExtensions())
+            .fileName(version.getFileName())
+            .fileSize(version.getFileSize())
+            .fileExtensions(version.getFileExtensions())
             .documentId(documentEntity.getDocumentId())
             .URI(url)
-            .version(documentEntity.getVersion())
-            .createdAt(documentEntity.getCreatedAt())
+            .version(version.getDocumentVersion())
+            .createdAt(version.getCreatedAt())
             .updatedAt(documentEntity.getUpdateAt())
-            .status(documentEntity.getStatus())
-            .chunks(documentEntity.getChunks())
+            .status(version.getStatus())
+            .chunks(version.getChunksCount())
             .build();
     }
 
@@ -247,6 +265,7 @@ public class DocumentService {
             throw new DocumentNotExistException("No Documents Found");
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
+        DocumentVersionEntity version = getLatestVersion(documentId);
 
         // AI Config Should Exist.
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
@@ -261,7 +280,7 @@ public class DocumentService {
 
         // Document Handling and Create Filter for the latest document
         filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(version.getDocumentVersion()));
 
         EmbeddingSearchResult<TextSegment> searchResultContext = embeddingRequestHandler.makeFilterRequest(filter);
 
@@ -310,5 +329,11 @@ public class DocumentService {
             }
         );
         return emitter;
+    }
+
+    private DocumentVersionEntity getLatestVersion(UUID documentId) {
+        return documentVersionsRepository
+            .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+            .orElseThrow(() -> new DocumentNotExistException("Document version not found"));
     }
 }

@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import com.example.doc_intel.Entity.DocumentEntity;
 import org.springframework.stereotype.Component;
 
 import com.example.doc_intel.ChatModels.LongChainChatModel.ChatModelFactory;
@@ -17,7 +18,7 @@ import com.example.doc_intel.DTO.ChatModel.SearchResponseDTO;
 import com.example.doc_intel.DTO.TextSegmentResponseDTO;
 import com.example.doc_intel.EmbedingStore.EmbeddingRequestHandler;
 import com.example.doc_intel.Entity.AIConfig;
-import com.example.doc_intel.Entity.DocumentEntity;
+import com.example.doc_intel.Entity.DocumentVersionEntity;
 import com.example.doc_intel.Entity.UserEntity;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.AIConfigNotExistException;
 import com.example.doc_intel.Exceptions.ChatModelExceptions.NoResultFoundException;
@@ -25,6 +26,7 @@ import com.example.doc_intel.Exceptions.ProcessFileException;
 import com.example.doc_intel.Exceptions.UserNotExistException;
 import com.example.doc_intel.Repository.AIConfigRepository;
 import com.example.doc_intel.Repository.DocumentsRepository;
+import com.example.doc_intel.Repository.DocumentVersionsRepository;
 import com.example.doc_intel.Repository.UserRepository;
 import com.example.doc_intel.Utils.Utils;
 
@@ -53,6 +55,8 @@ public class SearchService {
     private final UserRepository userRepository;
 
     private final DocumentsRepository documentsRepository;
+
+    private final DocumentVersionsRepository documentVersionsRepository;
 
     private final EmbeddingRequestHandler embeddingRequestHandler;
 
@@ -103,9 +107,11 @@ public class SearchService {
             if (optionalDocumentEntity.isEmpty()) {
                 throw new NoResultFoundException("Document Not Found");
             }
-            DocumentEntity documentEntity = optionalDocumentEntity.get();
+            DocumentVersionEntity latestVersion = documentVersionsRepository
+                .findFirstByDocument_DocumentIdAndDocument_IsActiveTrueOrderByDocumentVersionDesc(documentId)
+                .orElseThrow(() -> new NoResultFoundException("Document Version Not Found"));
             filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentEntity.getVersion()));
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(latestVersion.getDocumentVersion()));
         }
 
         // Handing OpenSearch Request
@@ -178,6 +184,4 @@ public class SearchService {
                     .build());
         });
     }
-
-
 }
