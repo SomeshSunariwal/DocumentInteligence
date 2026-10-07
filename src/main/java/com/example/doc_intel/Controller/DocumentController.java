@@ -26,8 +26,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 
 import java.util.List;
 import java.util.UUID;
+
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
+
+import javax.annotation.Nullable;
 
 /**
  * Controller class for handling document-related API endpoints.
@@ -49,6 +52,7 @@ public class DocumentController {
     /**
      * Endpoint to upload a document.
      * * @param files
+     *
      * @return DocumentResponseDTO
      */
     @PostMapping(value = "/users/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -59,8 +63,9 @@ public class DocumentController {
 
     /**
      * Endpoint to get all documents of a user.
+     *
      * @param documentId UUID documentId
-     * @param file update document
+     * @param file       update document
      * @return DocumentResponseDTO
      */
     @PutMapping(value = "/users/documents/{documentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -91,12 +96,14 @@ public class DocumentController {
 
     /**
      * This is used to summarize the document
+     *
      * @param documentId UUID
      * @return Stream of words
      */
     @GetMapping("/users/documents/{documentId}/summery")
-    public ResponseEntity<ResponseBodyEmitter>  getDocumentSummery(@NonNull @PathVariable UUID documentId) {
-        ResponseBodyEmitter sse = documentService.getDocumentSummery(documentId);
+    public ResponseEntity<ResponseBodyEmitter> getDocumentSummery(@NonNull @PathVariable UUID documentId,
+                                                                  @RequestParam(required = false, name = "version") @Nullable Integer version) {
+        ResponseBodyEmitter sse = documentService.getDocumentSummery(documentId, version);
         return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).body(sse);
     }
 }

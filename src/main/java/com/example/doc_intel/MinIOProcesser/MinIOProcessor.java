@@ -13,6 +13,9 @@ public interface MinIOProcessor {
 
     GetObjectResponse getObject(@NonNull String objectKey, @Nullable String versionId);
 
-    String getPresignedObjectUrl(@NonNull String objectKey, @NonNull String contentType, @NonNull String fileName);
+    String getPresignedObjectUrl(@NonNull String objectKey,
+                                 @NonNull String contentType,
+                                 @NonNull String fileName,
+                                 @NonNull String minIOVersion);
 
 }

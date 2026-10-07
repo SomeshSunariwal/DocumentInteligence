@@ -42,8 +42,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -184,7 +186,8 @@ public class DocumentService {
                         // get Persistence URI;
                         String url = minIOProcessor.getPresignedObjectUrl(version.getObjectKey(),
                             version.getContentType(),
-                            version.getFileName());
+                            version.getFileName(),
+                            version.getMinIOVersionId());
 
                         return DocumentResponseDTO.builder()
                             .fileName(version.getFileName())
@@ -246,8 +249,12 @@ public class DocumentService {
 
         List<DocumentResponseDTO> documentResponseDTOS = documentVersions.stream().map(
             documentVersionEntity -> {
-                String url = minIOProcessor.getPresignedObjectUrl(documentVersionEntity.getObjectKey(),
-                    documentVersionEntity.getContentType(), documentVersionEntity.getFileName());
+                String url = minIOProcessor
+                    .getPresignedObjectUrl(documentVersionEntity.getObjectKey(),
+                        documentVersionEntity.getContentType(),
+                        documentVersionEntity.getFileName(),
+                        documentVersionEntity.getMinIOVersionId());
+
                 return DocumentResponseDTO.builder()
                     .fileName(documentVersionEntity.getFileName())
                     .fileSize(documentVersionEntity.getFileSize())
@@ -272,7 +279,7 @@ public class DocumentService {
      * Get Document Summery of the User with DocumentId
      */
     @Transactional
-    public ResponseBodyEmitter getDocumentSummery(@NonNull UUID documentId) {
+    public ResponseBodyEmitter getDocumentSummery(@NonNull UUID documentId, @Nullable Integer version) {
         String email = Utils.getUserEmail();
 
         // User At-least exist
@@ -291,7 +298,6 @@ public class DocumentService {
             throw new DocumentNotExistException("No Documents Found", ErrorCode.DocumentSummaryTargetNotFound);
         }
         DocumentEntity documentEntity = optionalDocumentEntity.get();
-        DocumentVersionEntity version = getLatestVersion(documentId);
 
         // AI Config Should Exist.
         Optional<AIConfig> aiConfigOptional = aiConfigRepository.findByUser_Email(email);
@@ -304,9 +310,15 @@ public class DocumentService {
         // Create Filter to Open Search to get the context
         Filter filter = metadataKey(Constants.META_USER_ID).isEqualTo(userEntity.getUserId());
 
-        // Document Handling and Create Filter for the latest document
-        filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
-            .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(version.getDocumentVersion()));
+        // Document Handling and Create Filter for the version specific document
+        if (Objects.isNull(version)) {
+            DocumentVersionEntity documentVersion = getLatestVersion(documentId);
+            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(documentVersion.getDocumentVersion()));
+        } else {
+            filter = filter.and(metadataKey(Constants.META_DOCUMENT_ID).isEqualTo(documentId))
+                .and(metadataKey(Constants.META_DOCUMENT_VERSION).isEqualTo(version));
+        }
 
         EmbeddingSearchResult<TextSegment> searchResultContext = embeddingRequestHandler.makeFilterRequest(filter);
 

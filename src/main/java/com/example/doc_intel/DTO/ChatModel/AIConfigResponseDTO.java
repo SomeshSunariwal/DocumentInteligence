@@ -24,4 +24,7 @@ public class AIConfigResponseDTO {
 
     @NotBlank
     private String apiKey;
+
+    @NotBlank
+    private String message;
 }
