@@ -66,7 +66,10 @@ public class MinIOProcessorImpl implements MinIOProcessor {
     }
 
     @Override
-    public String getPresignedObjectUrl(@NonNull String objectKey, @NonNull String contentType, @NonNull String fileName) {
+    public String getPresignedObjectUrl(@NonNull String objectKey,
+                                        @NonNull String contentType,
+                                        @NonNull String fileName,
+                                        @NonNull String minIOVersion) {
         Map<String, String> headers = Map.of(
             "response-content-type", "%s".formatted(contentType),
             "response-content-disposition", "inline; filename=%s".formatted(fileName)
@@ -80,6 +83,7 @@ public class MinIOProcessorImpl implements MinIOProcessor {
                     .expiry(10, TimeUnit.MINUTES)
                     .extraQueryParams(headers)
                     .method(Http.Method.GET)
+                    .versionId(minIOVersion)
                     .build()
             );
         } catch (Exception e) {

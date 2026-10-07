@@ -47,9 +47,9 @@ public class ConfigService {
                 .modelName(aiConfig.get().getModelName())
                 .baseURL(aiConfig.get().getBaseURL())
                 .apiKey(aiConfig.get().getApiKey())
+                .message("Config Updated Successfully")
                 .build();
         }
-
         // if config is not present then create it.
         AIConfig aiConfigEntity = AIConfig.builder()
             .apiKey(aiConfigRequestDTO.getApiKey())
@@ -65,6 +65,7 @@ public class ConfigService {
             .modelName(aiConfigEntity.getModelName())
             .baseURL(aiConfigEntity.getBaseURL())
             .apiKey(aiConfigEntity.getApiKey())
+            .message("Config Created Successfully")
             .build();
     }
 
@@ -82,6 +83,7 @@ public class ConfigService {
             .modelName(aiConfig.getModelName())
             .baseURL(aiConfig.getBaseURL())
             .apiKey(aiConfig.getApiKey())
+            .message("Successfully Fetched Config")
             .build();
     }
 }
