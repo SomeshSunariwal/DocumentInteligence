@@ -117,9 +117,11 @@ public class DocumentProcessorService {
                 .userId(userId)
                 .documentVersion(version)
                 .documentId(documentId)
-                .line(8)
+                .maxLinesPerChunk(8)
+                .minLinesPerChunk(3)
                 .overlapLine(1)
-                .fileName(fileName).build();
+                .fileName(fileName)
+                .build();
 
             chunks = documentEncoder.encode(encoderModel);
             log.info("Number of chunks: {}", chunks.size());

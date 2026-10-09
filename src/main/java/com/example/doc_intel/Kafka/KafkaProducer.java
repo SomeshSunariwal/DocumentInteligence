@@ -16,6 +16,6 @@ public class KafkaProducer {
     }
 
     public void publish(KafkaEventDTO event) {
-        template.send(Constants.DOCUMENT_EVENT, event);
+        template.send(Constants.DOCUMENT_EVENT, event.getDocumentId().toString(), event);
     }
 }

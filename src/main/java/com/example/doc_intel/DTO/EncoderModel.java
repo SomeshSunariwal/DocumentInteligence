@@ -28,7 +28,10 @@ public class EncoderModel {
     final String fileName;
 
     @NonNull
-    final Integer line;
+    final Integer maxLinesPerChunk;
+
+    @NonNull
+    final Integer minLinesPerChunk;
 
     @NonNull
     final Integer overlapLine;

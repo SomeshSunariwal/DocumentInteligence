@@ -40,7 +40,10 @@ public class Utils {
 
     private static final Map<String, FileExtensions> SUPPORTED_EXTENSIONS = Map.of(
         "pdf", FileExtensions.PDF,
-        "txt", FileExtensions.TXT
+        "txt", FileExtensions.TXT,
+        "doc", FileExtensions.DOC,
+        "docx", FileExtensions.DOCX,
+        "docs", FileExtensions.DOCX
     );
 
     public static Metadata convertToMetaData(OpenSearchMetaDataDTO openSearchMetaDataDTO) {

@@ -87,6 +87,12 @@ public final class ErrorCode {
 
     public static final Integer PdfFileReadFailed = 1205;
 
+    public static final Integer WordFileReadFailed = 1206;
+
+    public static final Integer WordDocumentProcessingFailed = 1207;
+
+    public static final Integer WordDocumentXProcessingFailed = 1208;
+
     // AI errors: 1300-1399
     public static final Integer DocumentSummaryAIConfigMissing = 1300;
 
