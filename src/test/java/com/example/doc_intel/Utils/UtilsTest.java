@@ -26,6 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class UtilsTest {
 
     @Test
+    void recognizesWordExtensions() {
+        assertEquals(FileExtensions.DOC, Utils.getExtension(fileNamed("document.DOC")));
+        assertEquals(FileExtensions.DOCX, Utils.getExtension(fileNamed("document.docx")));
+        assertEquals(FileExtensions.DOCX, Utils.getExtension(fileNamed("document.docs")));
+    }
+
+    @Test
     void getExtensionReturnsPdfForPdfFile() {
         MockMultipartFile file = fileNamed("document.pdf");
         assertEquals(FileExtensions.PDF, Utils.getExtension(file));
@@ -39,7 +46,7 @@ class UtilsTest {
 
     @Test
     void getExtensionReturnsNullForUnsupportedExtension() {
-        MockMultipartFile file = fileNamed("document.docx");
+        MockMultipartFile file = fileNamed("document.zip");
         assertNull(Utils.getExtension(file));
     }
 

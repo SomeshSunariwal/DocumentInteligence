@@ -71,7 +71,7 @@ public class DocumentProcessor {
             throw new UserNotExistException("User not Exist", ErrorCode.DocumentProcessorUserNotFound);
         }
         Optional<DocumentEntity> documentOptional = documentsRepository
-            .findByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
+            .findForUpdateByDocumentIdAndUser_EmailAndIsActiveTrue(documentId, email);
         if (documentOptional.isEmpty()) {
             throw new DocumentNotExistException("Document Id: %s not exist".formatted(documentId),
                 ErrorCode.DocumentUpdateTargetNotFound);
